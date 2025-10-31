@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: lin-agent
+server:
+  port: 8123
+  servlet:
+    context-path: /agent
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    group: 'default'
+    paths-to-math: '/**'
+    packages-to-scan: com.lin.linagent.controller
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
