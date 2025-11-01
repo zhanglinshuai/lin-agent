@@ -40,7 +40,7 @@ public class sdkInvokeAgent {
     public static void main(String[] args) {
         try {
             GenerationResult result = callWithMessage();
-            System.out.println(JsonUtils.toJson(result));
+            System.out.println("Sdk调用成功");
         } catch (ApiException | NoApiKeyException | InputRequiredException e) {
             // 使用日志框架记录异常信息
             System.err.println("An error occurred while calling the generation service: " + e.getMessage());

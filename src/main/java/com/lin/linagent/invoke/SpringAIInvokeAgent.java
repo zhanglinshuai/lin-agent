@@ -22,6 +22,6 @@ public class SpringAIInvokeAgent implements CommandLineRunner {
         AssistantMessage assistantMessage = dashscopeChatModel.call(new Prompt("你好，你会做什么?"))
                 .getResult()
                 .getOutput();
-        System.out.println(assistantMessage.getText());
+        System.out.println("Spring AI 调用成功");
     }
 }

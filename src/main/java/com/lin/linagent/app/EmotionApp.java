@@ -1,6 +1,7 @@
 package com.lin.linagent.app;
 
 import com.lin.linagent.advisor.MyLoggerAdvisor;
+import com.lin.linagent.advisor.MyReTwoAdvisor;
 import com.lin.linagent.contant.CommonVariables;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -39,7 +40,9 @@ public class EmotionApp {
                 .defaultAdvisors(
                         MessageChatMemoryAdvisor.builder(chatMemory).build(),
                         //日志Advisor
-                        new MyLoggerAdvisor()
+                        new MyLoggerAdvisor(),
+                        //自定义的Re-reading advisor
+                        new MyReTwoAdvisor()
                 )
                 .build();
     }

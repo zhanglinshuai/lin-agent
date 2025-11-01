@@ -13,6 +13,6 @@ public class LangChainInvokeAgent {
                 .modelName("qwen-max")
                 .build();
         String answer = chatModel.chat("你擅长干什么？");
-        System.out.println(answer);
+        System.out.println("LangChain4j请求成功");
     }
 }

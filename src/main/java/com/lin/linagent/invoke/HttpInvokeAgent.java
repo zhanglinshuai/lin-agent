@@ -50,11 +50,9 @@ public class HttpInvokeAgent {
                 .execute();
         //处理响应
         if(response.isOk()){
-            System.out.println("请求成功，响应内容:");
-            System.out.println(response.body());
+            System.out.println("HTTP请求成功，响应内容:");
         }else {
-            System.out.println("请求失败，状态码："+response.getStatus());
-            System.out.println("响应内容:"+response.body());
+            System.out.println("HTTP请求失败，状态码："+response.getStatus());
         }
     }
 }
