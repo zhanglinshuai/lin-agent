@@ -8,6 +8,7 @@ import com.alibaba.dashscope.common.Role;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.alibaba.dashscope.exception.UploadFileException;
 import com.alibaba.dashscope.utils.JsonUtils;
+import com.lin.linagent.advisor.MyBannerWordAdvisor;
 import com.lin.linagent.advisor.MyLoggerAdvisor;
 import com.lin.linagent.advisor.MyReTwoAdvisor;
 import com.lin.linagent.chatMemory.CustomMysqlChatMemoryRepositoryDialect;
@@ -65,6 +66,8 @@ public class EmotionApp {
                 .defaultSystem(CommonVariables.SYSTEM_PROMPT)
                 .defaultAdvisors(
                         MessageChatMemoryAdvisor.builder(chatMemory).build(),
+                        //违禁词校验Advisor
+                        new MyBannerWordAdvisor(),
                         //日志Advisor
                         new MyLoggerAdvisor(),
                         //自定义的Re-reading advisor
@@ -88,7 +91,6 @@ public class EmotionApp {
                 .call()
                 .chatResponse();
         String answer = response.getResult().getOutput().getText();
-        log.info("content:{}", answer);
         return answer;
     }
 
@@ -110,7 +112,6 @@ public class EmotionApp {
                 .advisors(sepc -> sepc.param(ChatMemory.CONVERSATION_ID, chatId))
                 .call()
                 .entity(EmotionReport.class);
-        log.info("emotionReport:{}", emotionReport);
         return emotionReport;
     }
 

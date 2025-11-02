@@ -23,7 +23,7 @@ class EmotionAppTest {
     void doChat() {
         String chatId = UUID.randomUUID().toString();
         //第一轮
-        String message = "明天面试，紧张得睡不着";
+        String message = "明天面试，紧张得睡不着,操逼";
         String answer = emotionApp.doChat(message,chatId);
         Assertions.assertNotNull(answer);
         //第二轮
@@ -57,5 +57,13 @@ class EmotionAppTest {
         String userPrompt = "这些图片描述了什么？";
         Object result = emotionApp.MultiImage(imgUrls,userPrompt);
         Assertions.assertNotNull(result);
+    }
+
+    @Test
+    void bannerWord(){
+        String chatId = UUID.randomUUID().toString();
+        String message = "明天面试，紧张得睡不着,操逼";
+        String answer = emotionApp.doChat(message, chatId);
+        Assertions.assertNotNull(answer);
     }
 }
