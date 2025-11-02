@@ -35,4 +35,12 @@ class EmotionAppTest {
         answer = emotionApp.doChat(message,chatId);
         Assertions.assertNotNull(answer);
     }
+
+    @Test
+    void getEmotionReport() {
+        String chatId = UUID.randomUUID().toString();
+        String message = "明天面试，紧张得睡不着";
+        EmotionApp.EmotionReport emotionReport = emotionApp.getEmotionReport(message, chatId);
+        Assertions.assertNotNull(emotionReport);
+    }
 }
