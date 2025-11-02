@@ -1,10 +1,14 @@
 package com.lin.linagent.app;
 
+import com.alibaba.dashscope.exception.NoApiKeyException;
+import com.alibaba.dashscope.exception.UploadFileException;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 @SpringBootTest()
 class EmotionAppTest {
@@ -42,5 +46,16 @@ class EmotionAppTest {
         String message = "明天面试，紧张得睡不着";
         EmotionApp.EmotionReport emotionReport = emotionApp.getEmotionReport(message, chatId);
         Assertions.assertNotNull(emotionReport);
+    }
+
+    @Test
+    void multiImage() throws NoApiKeyException, UploadFileException {
+        List<String>  imgUrls = new ArrayList<>();
+        imgUrls.add("https://dashscope.oss-cn-beijing.aliyuncs.com/images/dog_and_girl.jpeg");
+        imgUrls.add("https://dashscope.oss-cn-beijing.aliyuncs.com/images/tiger.png");
+        imgUrls.add( "https://dashscope.oss-cn-beijing.aliyuncs.com/images/rabbit.png");
+        String userPrompt = "这些图片描述了什么？";
+        Object result = emotionApp.MultiImage(imgUrls,userPrompt);
+        Assertions.assertNotNull(result);
     }
 }

@@ -2,6 +2,10 @@ package com.lin.linagent.chatMemory;
 
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepositoryDialect;
 
+/**
+ * 自定义 mysqlChatMemoryRepositoryDialect
+ * @author zhanglinshuai
+ */
 public class CustomMysqlChatMemoryRepositoryDialect implements JdbcChatMemoryRepositoryDialect {
 
     @Override
