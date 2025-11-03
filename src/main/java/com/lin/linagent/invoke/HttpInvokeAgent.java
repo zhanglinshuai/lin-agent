@@ -22,7 +22,7 @@ public class HttpInvokeAgent {
         headers.put("Content-Type", "application/json");
         //设置请求体
         JSONObject requestBody = new JSONObject();
-        requestBody.put("model", "qwen-plus");
+        requestBody.put("model", CommonVariables.MODEL_NAME);
 
         JSONObject input = new JSONObject();
         JSONObject[] messages = new JSONObject[2];

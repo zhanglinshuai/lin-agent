@@ -25,6 +25,8 @@ public class MyLoggerAdvisor implements CallAdvisor, StreamAdvisor {
     @Override
     public ChatClientResponse adviseCall(ChatClientRequest chatClientRequest, CallAdvisorChain callAdvisorChain) {
         logRequest(chatClientRequest);
+        String userPrompt = chatClientRequest.prompt().getUserMessage().getText();
+
         ChatClientResponse chatClientResponse = callAdvisorChain.nextCall(chatClientRequest);
 
         logResponse(chatClientResponse);

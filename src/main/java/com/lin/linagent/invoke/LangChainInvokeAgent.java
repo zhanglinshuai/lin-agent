@@ -10,7 +10,7 @@ public class LangChainInvokeAgent {
     public static void main(String[] args) {
         QwenChatModel chatModel = QwenChatModel.builder()
                 .apiKey(CommonVariables.API_KEY)
-                .modelName("qwen-max")
+                .modelName(CommonVariables.MODEL_NAME)
                 .build();
         String answer = chatModel.chat("你擅长干什么？");
         System.out.println("LangChain4j请求成功");

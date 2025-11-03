@@ -114,6 +114,26 @@
             <version>8.0.33</version>
         </dependency>
 
+        <!--textReader依赖包-->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-commons</artifactId>
+            <version>1.0.2</version>
+        </dependency>
+        <!--markDownReader依赖包-->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-markdown-document-reader</artifactId>
+            <version>1.0.2</version>
+        </dependency>
+
+
+        <!--检索增强advisor依赖包-->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-advisors-vector-store</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

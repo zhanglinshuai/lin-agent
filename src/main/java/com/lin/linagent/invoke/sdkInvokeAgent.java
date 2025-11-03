@@ -31,7 +31,7 @@ public class sdkInvokeAgent {
                 .build();
         GenerationParam param = GenerationParam.builder()
                 .apiKey(CommonVariables.API_KEY)
-                .model("qwen-plus")
+                .model(CommonVariables.MODEL_NAME)
                 .messages(Arrays.asList(systemMsg, userMsg))
                 .resultFormat(GenerationParam.ResultFormat.MESSAGE)
                 .build();

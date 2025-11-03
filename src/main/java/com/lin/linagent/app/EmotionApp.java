@@ -7,27 +7,34 @@ import com.alibaba.dashscope.common.MultiModalMessage;
 import com.alibaba.dashscope.common.Role;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.alibaba.dashscope.exception.UploadFileException;
-import com.alibaba.dashscope.utils.JsonUtils;
-import com.lin.linagent.advisor.MyBannerWordAdvisor;
 import com.lin.linagent.advisor.MyLoggerAdvisor;
-import com.lin.linagent.advisor.MyReTwoAdvisor;
 import com.lin.linagent.chatMemory.CustomMysqlChatMemoryRepositoryDialect;
 import com.lin.linagent.contant.CommonVariables;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
+import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 情感大师应用功能
@@ -37,9 +44,13 @@ import java.util.*;
 @Component
 @Slf4j
 public class EmotionApp {
-
+    @Resource
+    private VectorStore EmotionVectorStore;
 
     private final ChatClient chatClient;
+
+    @Resource
+    private ResourcePatternResolver resourcePatternResolver;
 
     /**
      * ai支持多轮对话能力
@@ -49,6 +60,9 @@ public class EmotionApp {
      * @param dashscopeChatModel
      */
     public EmotionApp(ChatModel dashscopeChatModel) {
+        this.resourcePatternResolver = new PathMatchingResourcePatternResolver();
+        org.springframework.core.io.Resource resource = resourcePatternResolver.getResource("templates/systemPrompt.md");
+
         DataSource dataSource = new DriverManagerDataSource(
                 "jdbc:mysql://localhost:3306/chat_agent",
                 "root",
@@ -63,15 +77,15 @@ public class EmotionApp {
                 .maxMessages(10)
                 .build();
         chatClient = ChatClient.builder(dashscopeChatModel)
-                .defaultSystem(CommonVariables.SYSTEM_PROMPT)
+                .defaultSystem(resource)
                 .defaultAdvisors(
                         MessageChatMemoryAdvisor.builder(chatMemory).build(),
-                        //违禁词校验Advisor
-                        new MyBannerWordAdvisor(),
+//                        //违禁词校验Advisor
+//                        new MyBannerWordAdvisor(),
                         //日志Advisor
-                        new MyLoggerAdvisor(),
+                        new MyLoggerAdvisor()
                         //自定义的Re-reading advisor
-                        new MyReTwoAdvisor()
+//                        new MyReTwoAdvisor()
                 )
                 .build();
     }
@@ -116,9 +130,15 @@ public class EmotionApp {
     }
 
     /**
-     * dashScope多模态支持图片输入功能
+     * dashScope多模态图片识别功能
+     *
+     * @param imgUrls
+     * @param userPrompt
+     * @return
+     * @throws NoApiKeyException
+     * @throws UploadFileException
      */
-    public Object MultiImage(List<String> imgUrls,String userPrompt) throws NoApiKeyException, UploadFileException {
+    public Object MultiImage(List<String> imgUrls, String userPrompt) throws NoApiKeyException, UploadFileException {
         List<Map<String, Object>> list = new ArrayList<>();
         for (String imgUrl : imgUrls) {
             list.add(Collections.singletonMap("image", imgUrl));
@@ -127,12 +147,11 @@ public class EmotionApp {
         MultiModalConversation conv = new MultiModalConversation();
         MultiModalMessage userMessage = MultiModalMessage.builder().role(Role.USER.getValue())
                 .content(list)
-
                 .build();
         MultiModalConversationParam param = MultiModalConversationParam.builder()
                 .apiKey(CommonVariables.API_KEY)
                 // 此处以qwen-vl-plus为例，可按需更换模型名称。模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
-                .model("qwen-vl-plus")
+                .model(CommonVariables.MODEL_IMAGE_NAME)
                 .message(userMessage)
                 .build();
         MultiModalConversationResult result = conv.call(param);
@@ -140,4 +159,30 @@ public class EmotionApp {
         return result.getOutput().getChoices().get(0).getMessage().getContent().get(0).get("text");
     }
 
+    /**
+     * 使用rag知识库进行对话
+     * 使用QuestionAnswerAdvisor
+     * @param message
+     * @param chatId
+     * @return
+     */
+    public String doChatWithRag(String message, String chatId) {
+        /**
+         * 构建检索增强生成Advisor
+         */
+        RetrievalAugmentationAdvisor ragAdvisor = RetrievalAugmentationAdvisor
+                .builder()
+                .documentRetriever(VectorStoreDocumentRetriever.builder()
+                        .vectorStore(EmotionVectorStore)
+                        .build()
+                ).build();
+        ChatResponse chatResponse = chatClient
+                .prompt()
+                .advisors(new QuestionAnswerAdvisor(EmotionVectorStore))
+                .user(message)
+                .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, chatId))
+                .call()
+                .chatResponse();
+        return chatResponse.getResult().getOutput().getText();
+    }
 }
