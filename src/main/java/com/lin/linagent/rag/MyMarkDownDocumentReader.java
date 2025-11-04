@@ -27,9 +27,9 @@ public class MyMarkDownDocumentReader {
     public List<Document> loadMarkDownDocuments(){
         List<Document> allDocuments = new ArrayList<>();
         try {
+            //读取文档
             Resource[] resources = resourcePatternResolver.getResources("classpath:static/document/*.md");
             for (Resource resource : resources) {
-                //读取文档
                 String filename = resource.getFilename();
                 MarkdownDocumentReaderConfig config = MarkdownDocumentReaderConfig.builder()
                         .withHorizontalRuleCreateDocument(true)

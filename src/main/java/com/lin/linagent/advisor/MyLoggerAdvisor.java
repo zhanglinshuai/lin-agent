@@ -15,17 +15,18 @@ import reactor.core.publisher.Flux;
 public class MyLoggerAdvisor implements CallAdvisor, StreamAdvisor {
 
 
-    private void logRequest(ChatClientRequest request) {
+    private ChatClientRequest logRequest(ChatClientRequest request) {
         log.info("用户输入：{}",request.prompt().getUserMessage().getText());
+        return request;
     }
 
-    private void logResponse(ChatClientResponse response) {
+    private ChatClientResponse logResponse(ChatClientResponse response) {
         log.info("模型输出：{}",response.chatResponse().getResult().getOutput().getText());
+        return response;
     }
     @Override
     public ChatClientResponse adviseCall(ChatClientRequest chatClientRequest, CallAdvisorChain callAdvisorChain) {
         logRequest(chatClientRequest);
-        String userPrompt = chatClientRequest.prompt().getUserMessage().getText();
 
         ChatClientResponse chatClientResponse = callAdvisorChain.nextCall(chatClientRequest);
 
