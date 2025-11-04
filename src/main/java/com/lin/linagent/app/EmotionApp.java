@@ -20,7 +20,9 @@ import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.rag.Query;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
+import org.springframework.ai.rag.preretrieval.query.transformation.RewriteQueryTransformer;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
@@ -50,6 +52,9 @@ public class EmotionApp {
 
     @Resource
     private ResourcePatternResolver resourcePatternResolver;
+
+    @Resource
+    private ChatModel dashscopeChatModel;
 
     /**
      * ai支持多轮对话能力
@@ -167,10 +172,21 @@ public class EmotionApp {
      */
     public String doChatWithRag(String message, String chatId) {
         /**
+         * 构建重写查询器
+         */
+        Query query = new Query(message);
+        RewriteQueryTransformer queryTransformer = RewriteQueryTransformer.builder()
+                .chatClientBuilder(ChatClient.builder(dashscopeChatModel))
+                .build();
+        queryTransformer.transform(query);
+        log.info("query:{}", query);
+        /**
          * 构建检索增强生成Advisor
          */
         RetrievalAugmentationAdvisor ragAdvisor = RetrievalAugmentationAdvisor
                 .builder()
+                .queryTransformers(queryTransformer)
+                //文档检索器
                 .documentRetriever(VectorStoreDocumentRetriever.builder()
                         .vectorStore(EmotionVectorStore)
                         .build()

@@ -13,21 +13,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 自定义文本文档阅读器
+ * 自定义文档抽取、转换、加载(ETL过程）
  * @author zhanglinshuai
  */
 @Slf4j
 @Component
-public class MyMarkDownDocumentReader {
+public class CustomDocumentETL {
+
     private final ResourcePatternResolver resourcePatternResolver;
 
-    public MyMarkDownDocumentReader(ResourcePatternResolver resourcePatternResolver) {
+    public CustomDocumentETL(ResourcePatternResolver resourcePatternResolver) {
         this.resourcePatternResolver = resourcePatternResolver;
     }
     public List<Document> loadMarkDownDocuments(){
         List<Document> allDocuments = new ArrayList<>();
         try {
-            //读取文档
+            //抽取文档
             Resource[] resources = resourcePatternResolver.getResources("classpath:static/document/*.md");
             for (Resource resource : resources) {
                 String filename = resource.getFilename();
@@ -37,6 +38,7 @@ public class MyMarkDownDocumentReader {
                         .withIncludeBlockquote(false)
                         .withAdditionalMetadata("filename", filename)
                         .build();
+                //加载文档
                 MarkdownDocumentReader markdownDocumentReader = new MarkdownDocumentReader(resource, config);
                 allDocuments.addAll(markdownDocumentReader.read());
                 return allDocuments;
