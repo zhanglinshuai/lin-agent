@@ -2,6 +2,7 @@ package com.lin.linagent.rag;
 
 import jakarta.annotation.Resource;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.embedding.BatchingStrategy;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,6 +27,9 @@ public class CustomPgVectorStore {
     @Resource
     private VectorStore pgVectorVectorStore;
 
+    @Resource
+    private BatchingStrategy customTokenCountBatchingStrategy;
+
     @Bean
     public VectorStore EmotionVectorStore() {
         DataSource dataSource = new DriverManagerDataSource(
@@ -49,7 +53,10 @@ public class CustomPgVectorStore {
             }
         }
         if(!CollectionUtils.isEmpty(documents)){
-            pgVectorVectorStore.add(documents);
+            List<List<Document>> batch = customTokenCountBatchingStrategy.batch(documents);
+            for(List<Document> batchDocuments : batch){
+                pgVectorVectorStore.add(batchDocuments);
+            }
         }
         return pgVectorVectorStore;
     }

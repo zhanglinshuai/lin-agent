@@ -41,7 +41,6 @@ public class CustomDocumentETL {
                 //加载文档
                 MarkdownDocumentReader markdownDocumentReader = new MarkdownDocumentReader(resource, config);
                 allDocuments.addAll(markdownDocumentReader.read());
-                return allDocuments;
             }
 
         } catch (IOException e) {

@@ -23,7 +23,7 @@ class EmotionAppTest {
     void doChat() {
         String chatId = UUID.randomUUID().toString();
         //第一轮
-        String message = "明天面试，紧张得睡不着,操逼";
+        String message = "明天面试，紧张得睡不着";
         String answer = emotionApp.doChat(message,chatId);
         Assertions.assertNotNull(answer);
         //第二轮
@@ -69,7 +69,7 @@ class EmotionAppTest {
 
     @Test
     void doChatWithRag() {
-        String message = "关于亲子关系我比较焦虑应该怎么办？";
+        String message = "明天面试，紧张得睡不着？";
         String chatId = UUID.randomUUID().toString();
         String answer = emotionApp.doChatWithRag(message, chatId);
         Assertions.assertNotNull(answer);

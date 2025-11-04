@@ -22,6 +22,7 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.rag.Query;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
+import org.springframework.ai.rag.generation.augmentation.ContextualQueryAugmenter;
 import org.springframework.ai.rag.preretrieval.query.transformation.RewriteQueryTransformer;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -185,7 +186,12 @@ public class EmotionApp {
          */
         RetrievalAugmentationAdvisor ragAdvisor = RetrievalAugmentationAdvisor
                 .builder()
+                //构建查询转换器（查询重写）
                 .queryTransformers(queryTransformer)
+                //构建查询增强（空上下文查询增强）
+                .queryAugmenter(ContextualQueryAugmenter.builder()
+                        .allowEmptyContext(true)
+                        .build())
                 //文档检索器
                 .documentRetriever(VectorStoreDocumentRetriever.builder()
                         .vectorStore(EmotionVectorStore)

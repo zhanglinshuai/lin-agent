@@ -1,5 +1,7 @@
 package com.lin.linagent.pgVector;
 
+import jakarta.annotation.Resource;
+import org.springframework.ai.embedding.BatchingStrategy;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
@@ -13,6 +15,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @Configuration
 public class pgVectorVectorConfig {
 
+    @Resource
+    private BatchingStrategy customTokenCountBatchingStrategy;
+
+
     @Bean
     public VectorStore pgVectorVectorStore(JdbcTemplate jdbcTemplate, EmbeddingModel dashscopeEmbeddingModel) {
         return PgVectorStore.builder(jdbcTemplate, dashscopeEmbeddingModel)
@@ -21,7 +27,6 @@ public class pgVectorVectorConfig {
                 .indexType(PgVectorStore.PgIndexType.HNSW)
                 .schemaName("public")
                 .vectorTableName("VECTOR_STORE")
-                .maxDocumentBatchSize(10000)
                 .build();
 
     }
