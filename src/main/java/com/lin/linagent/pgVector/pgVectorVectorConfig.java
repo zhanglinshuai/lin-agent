@@ -15,10 +15,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @Configuration
 public class pgVectorVectorConfig {
 
-    @Resource
-    private BatchingStrategy customTokenCountBatchingStrategy;
-
-
     @Bean
     public VectorStore pgVectorVectorStore(JdbcTemplate jdbcTemplate, EmbeddingModel dashscopeEmbeddingModel) {
         return PgVectorStore.builder(jdbcTemplate, dashscopeEmbeddingModel)

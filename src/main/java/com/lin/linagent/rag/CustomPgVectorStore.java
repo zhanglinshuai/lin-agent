@@ -1,5 +1,7 @@
 package com.lin.linagent.rag;
 
+import com.google.common.collect.Lists;
+import com.lin.linagent.rag.etl.CustomDocumentETL;
 import jakarta.annotation.Resource;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.BatchingStrategy;
@@ -11,10 +13,8 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.util.CollectionUtils;
 
 import javax.sql.DataSource;
-import java.sql.ResultSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * 自定义向量存储器
@@ -55,7 +55,9 @@ public class CustomPgVectorStore {
         if(!CollectionUtils.isEmpty(documents)){
             List<List<Document>> batch = customTokenCountBatchingStrategy.batch(documents);
             for(List<Document> batchDocuments : batch){
-                pgVectorVectorStore.add(batchDocuments);
+                for (List<Document> documentList : Lists.partition(batchDocuments, 25)) {
+                    pgVectorVectorStore.add(documentList);
+                }
             }
         }
         return pgVectorVectorStore;

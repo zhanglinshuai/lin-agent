@@ -21,4 +21,10 @@ public interface CommonVariables {
      String MODEL_NAME  = "qwen3-max";
 
      String MODEL_IMAGE_NAME = "qwen3-vl-plus";
+    /**
+     * ai自动提取的关键词数量
+     */
+    int ENRICHER_KEY_WORD_COUNT = 3;
+
+
 }

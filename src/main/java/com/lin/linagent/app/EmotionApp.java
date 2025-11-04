@@ -194,6 +194,8 @@ public class EmotionApp {
                         .build())
                 //文档检索器
                 .documentRetriever(VectorStoreDocumentRetriever.builder()
+                        //相似度搜索
+                        .similarityThreshold(0.8)
                         .vectorStore(EmotionVectorStore)
                         .build()
                 ).build();

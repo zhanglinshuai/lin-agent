@@ -1,4 +1,4 @@
-package com.lin.linagent.embedding;
+package com.lin.linagent.rag.etl.transformer;
 
 import com.knuddels.jtokkit.api.EncodingType;
 import org.springframework.ai.embedding.BatchingStrategy;
@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
  * 自定义批处理策略
  */
 @Configuration
-public class EmbeddingConfig {
+public class MyCustomTokenCountBatchStrategy {
 
     @Bean
     public BatchingStrategy customTokenCountBatchingStrategy() {
