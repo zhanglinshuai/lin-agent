@@ -74,4 +74,12 @@ class EmotionAppTest {
         String answer = emotionApp.doChatWithRag(message, chatId);
         Assertions.assertNotNull(answer);
     }
+
+    @Test
+    void getResultsThroughMultiRecall() {
+        String message = "明天面试，紧张得睡不着？";
+        String chatId = UUID.randomUUID().toString();
+        String resultsThroughMultiRecall = emotionApp.getResultsThroughMultiRecall(message, chatId);
+        Assertions.assertNotNull(resultsThroughMultiRecall);
+    }
 }

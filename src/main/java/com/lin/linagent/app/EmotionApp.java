@@ -10,6 +10,8 @@ import com.alibaba.dashscope.exception.UploadFileException;
 import com.lin.linagent.advisor.MyLoggerAdvisor;
 import com.lin.linagent.chatMemory.CustomMysqlChatMemoryRepositoryDialect;
 import com.lin.linagent.contant.CommonVariables;
+import com.lin.linagent.multirecall.MultiRecall;
+import com.lin.linagent.multirecall.RecallResultMerger;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -20,6 +22,8 @@ import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.document.Document;
 import org.springframework.ai.rag.Query;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.rag.generation.augmentation.ContextualQueryAugmenter;
@@ -56,6 +60,16 @@ public class EmotionApp {
 
     @Resource
     private ChatModel dashscopeChatModel;
+    /**
+     * 多路召回
+     */
+    @Resource
+    private MultiRecall multiRecall;
+    /**
+     * 召回后进行合并重排序
+     */
+    @Resource
+    private RecallResultMerger recallResultMerger;
 
     /**
      * ai支持多轮对话能力
@@ -64,8 +78,10 @@ public class EmotionApp {
      *
      * @param dashscopeChatModel
      */
-    public EmotionApp(ChatModel dashscopeChatModel) {
+    public EmotionApp(ChatModel dashscopeChatModel,MultiRecall multiRecall,RecallResultMerger recallResultMerger) {
         this.resourcePatternResolver = new PathMatchingResourcePatternResolver();
+        this.multiRecall = multiRecall;
+        this.recallResultMerger = recallResultMerger;
         org.springframework.core.io.Resource resource = resourcePatternResolver.getResource("templates/systemPrompt.md");
 
         DataSource dataSource = new DriverManagerDataSource(
@@ -87,8 +103,10 @@ public class EmotionApp {
                         MessageChatMemoryAdvisor.builder(chatMemory).build(),
 //                        //违禁词校验Advisor
 //                        new MyBannerWordAdvisor(),
+
                         //日志Advisor
                         new MyLoggerAdvisor()
+
                         //自定义的Re-reading advisor
 //                        new MyReTwoAdvisor()
                 )
@@ -179,8 +197,8 @@ public class EmotionApp {
         RewriteQueryTransformer queryTransformer = RewriteQueryTransformer.builder()
                 .chatClientBuilder(ChatClient.builder(dashscopeChatModel))
                 .build();
-        queryTransformer.transform(query);
-        log.info("query:{}", query);
+        String ReWriterQuery = queryTransformer.transform(query).text();
+        log.info("query:{}", ReWriterQuery);
         /**
          * 构建检索增强生成Advisor
          */
@@ -202,10 +220,36 @@ public class EmotionApp {
         ChatResponse chatResponse = chatClient
                 .prompt()
                 .advisors(ragAdvisor)
-                .user(message)
+                .user(ReWriterQuery)
                 .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, chatId))
                 .call()
                 .chatResponse();
         return chatResponse.getResult().getOutput().getText();
     }
+
+    /**
+     * 通过多路召回的方式得到结果
+     * @param message
+     * @param chatId
+     * @return
+     */
+    public String getResultsThroughMultiRecall(String message, String chatId) {
+        StringBuilder query = new StringBuilder();
+        //先进行多路召回
+        List<Document> multiRecallDocuments = multiRecall.recall(message);
+        List<Document> finalDocuments = recallResultMerger.mergeAndRank(multiRecallDocuments);
+        for (int i = 0; i < finalDocuments.size(); i++) {
+            query.append("文档").append(i+1).append(":").append(finalDocuments.get(i).getText()).append("\n");
+        }
+        query.append("\n问题:").append(message).append("\n");
+        ChatResponse chatResponse = chatClient
+                .prompt()
+                .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, chatId))
+                .user(query.toString())
+                .call()
+                .chatResponse();
+        return  chatResponse.getResult().getOutput().getText();
+    }
+
+
 }

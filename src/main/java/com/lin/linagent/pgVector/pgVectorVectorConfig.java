@@ -1,7 +1,5 @@
 package com.lin.linagent.pgVector;
 
-import jakarta.annotation.Resource;
-import org.springframework.ai.embedding.BatchingStrategy;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;

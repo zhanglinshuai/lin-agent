@@ -1,4 +1,9 @@
 spring:
+  elasticsearch:
+    username: elastic
+    password: QmlsSThsJJx_UUVYx9Ro
+    uris: http://localhost:9200
+
   application:
     name: lin-agent
   datasource:

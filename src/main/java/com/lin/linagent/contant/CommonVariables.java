@@ -25,6 +25,27 @@ public interface CommonVariables {
      * ai自动提取的关键词数量
      */
     int ENRICHER_KEY_WORD_COUNT = 3;
+    /**
+     * 多路召回中每种方式限制的召回条数
+     */
+    int EACH_CHANNEL_SIZE = 10;
 
+    /**
+     * 多路召回后，合并，重排序最后的召回条数
+     */
+    int RECALL_MERGED_SIZE = 5;
+
+    /**
+     * elastic的CA认证证书地址
+     */
+    String ELASTIC_CA_CRT = "D:\\elasticsearch\\elasticsearch-8.15.0\\config\\certs\\http_ca.crt";
+    /**
+     * elastic的账号
+     */
+    String ELASTIC_USER = "elastic";
+    /**
+     * elastic的密码
+     */
+    String ELASTIC_PASSWORD = "QmlsSThsJJx_UUVYx9Ro";
 
 }

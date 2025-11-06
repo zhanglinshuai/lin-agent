@@ -1,4 +1,4 @@
-package com.lin.linagent.rag;
+package com.lin.linagent.scheduler;
 
 import com.google.common.collect.Lists;
 import com.lin.linagent.rag.etl.CustomDocumentETL;
@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.util.CollectionUtils;
 
 import javax.sql.DataSource;
@@ -32,6 +33,11 @@ public class CustomPgVectorStore {
 
     @Bean
     public VectorStore EmotionVectorStore() {
+        return pgVectorVectorStore;
+    }
+
+    @Scheduled(cron = "0 0 23 * * ?")
+    public VectorStore reloadEmotionVectorStore() {
         DataSource dataSource = new DriverManagerDataSource(
                 "jdbc:postgresql://localhost:5432/postgres",
                 "postgres", "123456"

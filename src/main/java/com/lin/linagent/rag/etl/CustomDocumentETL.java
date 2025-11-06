@@ -37,7 +37,7 @@ public class CustomDocumentETL {
             Resource[] resources = resourcePatternResolver.getResources("classpath:static/document/*.md");
             for (Resource resource : resources) {
                 String filename = resource.getFilename();
-                String type = filename.substring(0,4);
+                String type = filename.substring(0,2);
                 HashMap<String, Object> additionalMetadata = new HashMap<>();
                 additionalMetadata.put("type", type);
                 additionalMetadata.put("filename", filename);
