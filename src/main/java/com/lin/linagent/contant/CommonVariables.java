@@ -48,4 +48,9 @@ public interface CommonVariables {
      */
     String ELASTIC_PASSWORD = "QmlsSThsJJx_UUVYx9Ro";
 
+    /**
+     * 将文档添加到elasticsearch每批的数量
+     */
+    int BITCH_ELASTIC = 500;
+
 }

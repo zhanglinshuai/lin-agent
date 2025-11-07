@@ -4,9 +4,11 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import com.lin.linagent.contant.CommonVariables;
 import com.lin.linagent.elasticsearch.entity.KnowledgeDoc;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -30,11 +32,6 @@ public class AddDataToElasticSearch {
     public AddDataToElasticSearch(ElasticsearchClient client) {
         this.client = client;
     }
-    /**
-     * TODO:
-     *  1. 完成将markdown格式文档以elasticsearch的格式存入
-     *  2. 完成markdown的增量更新
-     */
     /**
      * 将markdown格式的文件转换为document格式
      * @return
@@ -96,27 +93,38 @@ public class AddDataToElasticSearch {
 
 
     /**
-     * 将Knowledge批量导入到Elasticsearch
+     * 将Knowledge增量导入到Elasticsearch
      */
-
+    @Scheduled(cron = "0 0 23 * * *")
     public void addDataToElasticSearch() throws IOException {
         List<BulkOperation> operations = new ArrayList<>();
         List<KnowledgeDoc> knowledgeDocs = loadMarkDownToDocument();
         for(KnowledgeDoc doc : knowledgeDocs){
             operations.add(BulkOperation.of(b-> b
-                    .index(idx-> idx
+                    .update(idx-> idx
                             .index("knowledge_docs")
                             .id(doc.getId())
-                            .document(doc)
+                            .action(a-> a
+                                    .doc(doc)
+                                    //不存在就插入
+                                    .docAsUpsert(true))
                     )
             ));
-            BulkResponse response = client.bulk(BulkRequest.of(b -> b.operations(operations)));
-            if(response.errors()){
-                log.error("文档索引失败！");
-            }else {
-                log.info("文档索引成功！");
+            if(operations.size()>= CommonVariables.BITCH_ELASTIC){
+                BulkResponse response = client.bulk(BulkRequest.of(b -> b.operations(operations)));
+                if(response.errors()){
+                    log.error("文档索引失败！");
+                    response.items().forEach(item -> {
+                        if(item.error()!=null){
+                            log.error("文档{} 失败:{}",item.id(),item.error().reason());
+                        }
+                    });
+                }else {
+                    log.info("成功同步增量{}条文档",knowledgeDocs.size());
+                }
             }
         }
+
     }
 
 }
