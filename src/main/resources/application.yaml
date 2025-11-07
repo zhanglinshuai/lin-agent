@@ -1,4 +1,5 @@
 spring:
+  # elasticsearch 配置
   elasticsearch:
     username: elastic
     password: QmlsSThsJJx_UUVYx9Ro
@@ -20,12 +21,16 @@ spring:
       password: 123456
       driver-class-name: org.postgresql.Driver
 
+
+
   ai:
+    # chatmemory不初始化schema
     chat:
       memory:
         repository:
           jdbc:
             initialize-schema: never
+    # dashscope 配置
     dashscope:
       api-key: sk-6dc2d723f04249d4b8f203d8e43fdaa3
       chat:
@@ -43,6 +48,7 @@ server:
   servlet:
     context-path: /agent
 
+#knife4j配置
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
@@ -58,3 +64,17 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+
+
+# mybatis-plus配置
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: false
+    # 仅在开发环境开启日志
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+
+      logic-delete-field: isDelete #逻辑删除字段
+      logic-delete-value: 1 #逻辑已删除值
+      logic-not-delete-value: 0 #逻辑未删除值
