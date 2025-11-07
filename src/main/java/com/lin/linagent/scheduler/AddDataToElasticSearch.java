@@ -95,7 +95,7 @@ public class AddDataToElasticSearch {
     /**
      * 将Knowledge增量导入到Elasticsearch
      */
-    @Scheduled(cron = "0 0 23 * * *")
+    @Scheduled(cron = "0 0 23 * * 0")
     public void addDataToElasticSearch() throws IOException {
         List<BulkOperation> operations = new ArrayList<>();
         List<KnowledgeDoc> knowledgeDocs = loadMarkDownToDocument();
