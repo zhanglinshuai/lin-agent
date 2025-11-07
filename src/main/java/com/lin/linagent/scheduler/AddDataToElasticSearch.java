@@ -122,6 +122,8 @@ public class AddDataToElasticSearch {
                 }else {
                     log.info("成功同步增量{}条文档",knowledgeDocs.size());
                 }
+                //清空 bulk请求
+                operations.clear();
             }
         }
 
