@@ -16,6 +16,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 
+/**
+ * 多数据源pgVector
+ */
 @Configuration
 @EnableConfigurationProperties
 @MapperScan(basePackages = "com.lin.linagent.mapper", sqlSessionFactoryRef = "pgSqlSessionFactory")

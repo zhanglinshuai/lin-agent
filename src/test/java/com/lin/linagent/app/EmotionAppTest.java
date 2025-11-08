@@ -82,4 +82,12 @@ class EmotionAppTest {
         String resultsThroughMultiRecall = emotionApp.getResultsThroughMultiRecall(message, chatId);
         Assertions.assertNotNull(resultsThroughMultiRecall);
     }
+
+    @Test
+    void doChatWithTools() {
+        String chatId = UUID.randomUUID().toString();
+        String message = "推荐新乡周末适合情侣约会打卡的地方";
+        String answer = emotionApp.doChatWithTools(message, chatId);
+        System.out.println(answer);
+    }
 }

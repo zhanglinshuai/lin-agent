@@ -16,6 +16,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 
+/**
+ * 多数据源，mysql配置
+ */
 @Configuration
 @EnableConfigurationProperties
 @MapperScan(basePackages = "com.lin.linagent.mapper", sqlSessionFactoryRef = "mysqlSqlSessionFactory")

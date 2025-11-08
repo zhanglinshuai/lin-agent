@@ -53,4 +53,14 @@ public interface CommonVariables {
      */
     int BITCH_ELASTIC = 500;
 
+    /**
+     * 文件保存目录
+     */
+    String FILE_SAVE_DIR = System.getProperty("user.dir")+"/temp/file";
+
+    /**
+     * 联网搜索APIKEY
+     */
+    String SEARCH_API_KEY = "QUkvWnFfatidkkNWU692iSZ9";
+
 }
