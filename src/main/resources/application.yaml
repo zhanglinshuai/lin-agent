@@ -36,13 +36,19 @@ spring:
       chat:
         options:
           model: qwen3-max
-
+    #vector
     vectorstore:
       pgvector:
         index-type: HNSW
         distance-type: COSINE_DISTANCE
         dimensions: 1536
         max-document-batch-size: 10000
+    #mcp 服务配置
+    mcp:
+      client:
+        stdio:
+          servers-configuration: classpath:/mcp-servers.json
+
 server:
   port: 8123
   servlet:

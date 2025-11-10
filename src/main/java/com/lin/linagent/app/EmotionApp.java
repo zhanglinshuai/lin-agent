@@ -29,6 +29,7 @@ import org.springframework.ai.rag.generation.augmentation.ContextualQueryAugment
 import org.springframework.ai.rag.preretrieval.query.transformation.RewriteQueryTransformer;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
@@ -73,6 +74,9 @@ public class EmotionApp {
 
     @Resource
     private ToolCallback[] allTools;
+
+    @Resource
+    private ToolCallbackProvider  toolCallbackProvider;
 
     /**
      * ai支持多轮对话能力
@@ -271,4 +275,21 @@ public class EmotionApp {
         return chatResponse.getResult().getOutput().getText();
     }
 
+    /**
+     * 使用mcp与ai对话
+     * @param message
+     * @param chatId
+     * @return
+     */
+    public String doChatWithMcp(String message, String chatId) {
+        ChatResponse chatResponse = chatClient.prompt()
+                .user(message)
+                .advisors(advisorSpec -> {
+                    advisorSpec.param(ChatMemory.CONVERSATION_ID, chatId);
+                })
+                .toolCallbacks(toolCallbackProvider)
+                .call()
+                .chatResponse();
+        return chatResponse.getResult().getOutput().getText();
+    }
 }

@@ -112,6 +112,14 @@
         </dependency>
 
 
+
+        <!--mcp依赖-->
+        <!-- https://mvnrepository.com/artifact/org.springframework.ai/spring-ai-mcp -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-client</artifactId>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/com.alibaba/dashscope-sdk-java
                 阿里云百炼灵积大模型
          -->

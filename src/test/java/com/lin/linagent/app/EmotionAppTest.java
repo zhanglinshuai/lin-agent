@@ -90,4 +90,12 @@ class EmotionAppTest {
         String answer = emotionApp.doChatWithTools(message, chatId);
         System.out.println(answer);
     }
+
+    @Test
+    void doChatWithMcp() {
+        String chatId = UUID.randomUUID().toString();
+        String message = "推荐新乡周末适合情侣约会打卡的地方";
+        String answer = emotionApp.doChatWithMcp(message, chatId);
+        System.out.println(answer);
+    }
 }
