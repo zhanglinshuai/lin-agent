@@ -48,7 +48,6 @@ spring:
       client:
         stdio:
           servers-configuration: classpath:/mcp-servers.json
-
 server:
   port: 8123
   servlet:

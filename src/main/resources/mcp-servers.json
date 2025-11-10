@@ -1,14 +1,16 @@
 {
   "mcpServers": {
-    "amap-maps": {
-      "command": "npx.cmd",
+    "lin-image-search-mcp-server": {
+      "command": "java",
       "args": [
-        "-y",
-        "@amap/amap-maps-mcp-server"
+        "-Dspring.ai.mcp.server.stdio=true",
+        "-Dspring.main.web-aplication-type=none",
+        "-Dlogging.pattern.console=",
+        "-jar",
+        "lin-image-search-mcp/target/lin-image-search-mcp-0.0.1-SNAPSHOT.jar"
       ],
-      "env": {
-        "AMAP_MAPS_API_KEY": "fa817d301b8290cdfc2f85dbede46938"
-      }
+      "env": {}
     }
   }
 }
+
