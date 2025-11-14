@@ -3,8 +3,6 @@ package com.lin.linagent.tools;
 import com.lin.linagent.contant.CommonVariables;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-
-import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 class WebSearchToolTest {
 

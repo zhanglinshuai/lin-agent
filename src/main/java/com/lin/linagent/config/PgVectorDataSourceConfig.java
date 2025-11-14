@@ -3,7 +3,6 @@ package com.lin.linagent.config;
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
-import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -21,7 +20,6 @@ import javax.sql.DataSource;
  */
 @Configuration
 @EnableConfigurationProperties
-@MapperScan(basePackages = "com.lin.linagent.mapper", sqlSessionFactoryRef = "pgSqlSessionFactory")
 public class PgVectorDataSourceConfig {
 
     @Bean(name = "pgDataSource")

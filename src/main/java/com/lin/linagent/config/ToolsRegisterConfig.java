@@ -2,6 +2,7 @@ package com.lin.linagent.config;
 
 import com.lin.linagent.contant.CommonVariables;
 import com.lin.linagent.tools.FileOperationTool;
+import com.lin.linagent.tools.TerminateTool;
 import com.lin.linagent.tools.WebSearchTool;
 import org.springframework.ai.support.ToolCallbacks;
 import org.springframework.ai.tool.ToolCallback;
@@ -17,7 +18,8 @@ public class ToolsRegisterConfig {
     public ToolCallback[] allTools(){
         return ToolCallbacks.from(
                 new FileOperationTool(),
-                new WebSearchTool(CommonVariables.SEARCH_API_KEY)
+                new WebSearchTool(CommonVariables.SEARCH_API_KEY),
+                new TerminateTool()
         );
     }
 }
