@@ -36,6 +36,7 @@ import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 
 import javax.sql.DataSource;
 import java.util.ArrayList;
@@ -292,4 +293,15 @@ public class EmotionApp {
                 .chatResponse();
         return chatResponse.getResult().getOutput().getText();
     }
+
+    public Flux<String> doChatByStream(String message,String chatId){
+        return chatClient
+                .prompt()
+                .user(message)
+                .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID,chatId))
+                .stream()
+                .content();
+    }
+
+
 }

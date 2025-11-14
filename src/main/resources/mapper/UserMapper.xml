@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lin.linagent.mapper.UserMapper">
+
+    <resultMap id="BaseResultMap" type="com.lin.linagent.domain.User">
+            <id property="id" column="id" />
+            <result property="userName" column="userName" />
+            <result property="userPhone" column="userPhone" />
+            <result property="verificationCode" column="verificationCode" />
+            <result property="userPassword" column="userPassword" />
+            <result property="createTime" column="createTime" />
+            <result property="isDelete" column="isDelete" />
+            <result property="updateTime" column="updateTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,userName,userPhone,verificationCode,userPassword,createTime,
+        isDelete,updateTime
+    </sql>
+</mapper>

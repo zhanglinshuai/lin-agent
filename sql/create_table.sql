@@ -6,9 +6,10 @@ create table chat_memory
     conversation_id varchar(255) not null comment '会话id',
     content         text         not null comment '消息内容',
     message_type    varchar(50)  not null comment '消息类型',
-    create_time     timestamp    not null comment '创建时间'
+    create_time     timestamp    not null comment '创建时间',
+    user_id         varchar(255) null comment '当前会话的用户id'
 )
-comment '存储消息';
+    comment '存储消息';
 
 create table user
 (

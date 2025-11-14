@@ -15,7 +15,7 @@ public class CustomMysqlChatMemoryRepositoryDialect implements JdbcChatMemoryRep
 
     @Override
     public String getInsertMessageSql() {
-        return "INSERT INTO chat_memory (conversation_id,content,message_type,create_time) VALUES (?,?,?,?)";
+        return "INSERT INTO chat_memory (conversation_id,content,message_type,create_time,user_id) VALUES (?,?,?,?,?)";
     }
 
     @Override
