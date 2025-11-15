@@ -28,7 +28,7 @@ spring:
           jdbc:
             initialize-schema: never
     # dashscope 配置
-    dashscope:
+    dash-scope:
       api-key: sk-6dc2d723f04249d4b8f203d8e43fdaa3
       chat:
         options:
@@ -46,7 +46,7 @@ spring:
         stdio:
           servers-configuration: classpath:/mcp-servers.json
 server:
-  port: 8123
+  port: 8080
   servlet:
     context-path: /api
 # mybatis-plus配置

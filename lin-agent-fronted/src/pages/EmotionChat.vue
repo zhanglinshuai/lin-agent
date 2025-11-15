@@ -1,6 +1,8 @@
 <script setup>
 import {ref, onMounted, onBeforeUnmount, computed, nextTick} from 'vue'
+import { useRouter } from 'vue-router'
 import {openEmotionSSE} from '@/services/sse'
+import axios from 'axios'
 
 const chatId = ref('')
 const input = ref('')
@@ -18,12 +20,18 @@ const sidebarPeek = ref(false)
 const hideCollapse = ref(false)
 const peekHovering = ref(false)
 const peekClosing = ref(false)
+const showLoginModal = ref(false)
+const loginAccount = ref('')
+const loginPassword = ref('')
+const loginLoading = ref(false)
+const loginError = ref('')
 
 const canSend = computed(() => input.value.trim().length > 0)
 const messagesPanelRef = ref(null)
 const sidebarRef = ref(null)
 const userMessages = computed(() => messages.value.filter(m => m && m.role === 'user'))
 const assistantMessages = computed(() => messages.value.filter(m => m && m.role === 'assistant'))
+const router = useRouter()
 
 function genChatId() {
   if (crypto && crypto.randomUUID) return crypto.randomUUID()
@@ -33,6 +41,10 @@ function genChatId() {
 function send() {
   const text = input.value.trim()
   if (!text) return
+  try {
+    const uid = localStorage.getItem('user_id')
+    if (!uid) { showLoginModal.value = true; return }
+  } catch(e) { showLoginModal.value = true; return }
   messages.value.push({role: 'user', content: text})
   messages.value.push({role: 'assistant', content: '', loading: true, complete: false})
   input.value = ''
@@ -132,6 +144,26 @@ function openSettings() {
 }
 
 function logout() {
+  showToast('已退出登录')
+  showAvatarMenu.value = false
+  try { localStorage.removeItem('auth_token') } catch(e) {}
+  try { localStorage.removeItem('user_id') } catch(e) {}
+  try { localStorage.removeItem('user_name') } catch(e) {}
+  showLoginModal.value = true
+}
+
+function onOpenSettings() {
+  showToast('打开设置')
+  showAvatarMenu.value = false
+}
+
+function onLogout() {
+  showToast('已退出登录')
+  showAvatarMenu.value = false
+  try { localStorage.removeItem('auth_token') } catch(e) {}
+  showLoginModal.value = true
+  try { localStorage.removeItem('user_id') } catch(e) {}
+  try { localStorage.removeItem('user_name') } catch(e) {}
 }
 
 function openHistory(i) {
@@ -189,6 +221,45 @@ function showToast(text) {
   toastText.value = String(text || '')
   toastVisible.value = true
   setTimeout(() => { toastVisible.value = false }, 1500)
+}
+
+async function submitLogin() {
+  loginError.value = ''
+  if (!loginAccount.value.trim() || !loginPassword.value.trim()) {
+    loginError.value = '请输入用户名和密码'
+    return
+  }
+  if (loginLoading.value) return
+  loginLoading.value = true
+  let res
+  try {
+    res = await axios.post('/api/user/login', { userName: loginAccount.value, userPassword: loginPassword.value })
+  } catch(e) {
+    loginError.value = (e?.response?.data?.message) || (e?.message) || '登录失败'
+  }
+  loginLoading.value = false
+  if (!res) return
+  const raw = res.data
+  let token = null
+  let userId = null
+  if (typeof raw === 'string') {
+    userId = raw
+  } else if (raw && typeof raw === 'object') {
+    token = raw.token ?? raw.data?.token ?? null
+    if (typeof raw.data === 'string') userId = raw.data
+    userId = userId ?? raw.userId ?? raw.data?.userId ?? null
+  }
+  if (!token && !userId) {
+    loginError.value = (raw && raw.message) || '登录失败：未返回用户ID或token'
+    return
+  }
+  try {
+    if (token) localStorage.setItem('auth_token', String(token))
+    if (userId) localStorage.setItem('user_id', String(userId))
+    localStorage.setItem('user_name', String(loginAccount.value))
+  } catch(e) {}
+  showLoginModal.value = false
+  showToast('登录成功')
 }
 
 function copyMessage(text, i) {
@@ -346,8 +417,8 @@ function renderMarkdown(md) {
             </button>
             <div class="avatar" @click.stop="toggleAvatarMenu">🙂</div>
             <div v-if="showAvatarMenu" class="avatar-menu">
-              <button class="menu-item" @click="openSettings">设置</button>
-              <button class="menu-item" @click="logout">退出登录</button>
+              <button class="menu-item" @click="onOpenSettings">设置</button>
+              <button class="menu-item" @click="onLogout">退出登录</button>
             </div>
           </div>
           <div class="messages-panel" ref="messagesPanelRef" v-if="messages.length">
@@ -391,6 +462,19 @@ function renderMarkdown(md) {
                   <button class="send-round" :class="{ active: canSend }" :disabled="!canSend" @click="send">↑</button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+        <div v-if="showLoginModal" class="modal-mask" @click.self="showLoginModal=false">
+          <div class="modal-card">
+            <div class="modal-title">登录</div>
+            <div class="modal-form">
+              <label class="modal-label">用户名</label>
+              <input class="modal-input" v-model="loginAccount" placeholder="请输入用户名" />
+              <label class="modal-label">密码</label>
+              <input class="modal-input" type="password" v-model="loginPassword" placeholder="请输入密码" />
+              <div class="modal-error" v-if="loginError">{{ loginError }}</div>
+              <button class="modal-submit" :disabled="loginLoading || !loginAccount || !loginPassword" @click="submitLogin">{{ loginLoading ? '登录中...' : '登录' }}</button>
             </div>
           </div>
         </div>
@@ -500,7 +584,7 @@ function renderMarkdown(md) {
 
 .sidebar-top {
   position: relative;
-  padding: 16px;
+  padding: 24px 16px;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -657,10 +741,6 @@ function renderMarkdown(md) {
   display: flex;
   justify-content: flex-end;
 }
-.content.empty .avatar,
-.content.empty .avatar-menu {
-  display: none;
-}
 
 .layout:not(.collapsed) .content.empty {
   width: calc(100vw - var(--sidebar-w));
@@ -675,11 +755,17 @@ function renderMarkdown(md) {
 }
 
 .content-top {
-  width: 100%;
+  position: fixed;
+  top: 12px;
+  left: 16px;
+  right: 16px;
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  position: relative;
+  z-index: 1000;
+}
+.layout:not(.collapsed) .content-top {
+  left: calc(var(--sidebar-w) + 16px);
 }
 
 .expand-btn {
@@ -1004,5 +1090,58 @@ function renderMarkdown(md) {
 }
 .messages-panel::-webkit-scrollbar {
   display: none;
+}
+.modal-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2001;
+}
+.modal-card {
+  width: min(420px, 96vw);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 30px 40px rgba(0, 0, 0, 0.06), 0 10px 24px rgba(0, 0, 0, 0.04);
+  padding: 20px;
+}
+.modal-title { font-size: 18px; font-weight: 800; margin-bottom: 10px; }
+.modal-form { display: flex; flex-direction: column; gap: 8px; }
+.modal-label { font-size: 13px; opacity: .8; }
+.modal-input { border: 1px solid var(--color-border); border-radius: 8px; padding: 10px 12px; font-size: 15px; outline: none; }
+.modal-error { color: #ef4444; font-size: 13px; min-height: 18px; }
+.modal-submit { margin-top: 8px; padding: 10px 12px; border-radius: 999px; border: none; background: #2459d8; color: #fff; font-weight: 700; }
+.modal-submit:disabled { opacity: .6; cursor: not-allowed; }
+@media (max-width: 1280px) {
+  .layout { --sidebar-w: 260px; }
+}
+@media (max-width: 1024px) {
+  .layout { --sidebar-w: 240px; }
+  .content { padding: 20px 12px; }
+  .messages-panel, .compose-card { width: min(860px, 96vw); }
+}
+@media (max-width: 768px) {
+  .layout { --sidebar-w: 84vw; }
+  .content { padding: 16px 10px; gap: 12px; }
+  .compose-card { border-radius: 16px; width: 96vw; }
+  .messages-panel { width: 96vw; padding: 0 4px; }
+  .expand-btn.icon-btn.small { width: 28px; height: 28px; }
+  .avatar { width: 28px; height: 28px; }
+  .avatar-menu { min-width: 120px; }
+  .send-round { width: 36px; height: 36px; }
+}
+@media (max-width: 480px) {
+  .compose-area textarea { font-size: 15px; }
+  .placeholder { padding: 12px 16px 0; }
+  .compose-area { padding: 0 16px 12px; }
+  .hero-page { padding: 32px 12px; }
+  .hero-title { font-size: 20px; }
+  .hero-logo { font-size: 28px; }
 }
 </style>

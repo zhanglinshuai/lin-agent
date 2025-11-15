@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lin.linagent.mapper.ChatMemoryMapper">
+
+    <resultMap id="BaseResultMap" type="com.lin.linagent.domain.ChatMemory">
+            <id property="id" column="id" />
+            <result property="conversation_id" column="conversation_id" />
+            <result property="content" column="content" />
+            <result property="message_type" column="message_type" />
+            <result property="create_time" column="create_time" />
+            <result property="user_id" column="user_id" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,conversation_id,content,message_type,create_time,user_id
+    </sql>
+</mapper>

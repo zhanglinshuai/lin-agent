@@ -2,7 +2,9 @@ package com.lin.linagent.config;
 
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
-import org.mybatis.spring.SqlSessionFactoryBean;
+import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -24,19 +26,16 @@ import javax.sql.DataSource;
 public class MysqlDataSourceConfig {
 
     @Primary
+    @Bean(name = "mysqlDataSourceProperties")
+    @ConfigurationProperties(prefix = "spring.datasource.mysql")
+    public DataSourceProperties mysqlDataSourceProperties() {
+        return new DataSourceProperties();
+    }
+
+    @Primary
     @Bean(name = "mysqlDataSource")
-    public HikariDataSource mysqlDataSource(
-            @Value("${spring.datasource.mysql.url}") String url,
-            @Value("${spring.datasource.mysql.username}") String username,
-            @Value("${spring.datasource.mysql.password}") String password,
-            @Value("${spring.datasource.mysql.driver-class-name}") String driver
-    ) {
-        HikariDataSource hikariDataSource = new HikariDataSource();
-        hikariDataSource.setJdbcUrl(url);
-        hikariDataSource.setUsername(username);
-        hikariDataSource.setPassword(password);
-        hikariDataSource.setDriverClassName(driver);
-        return hikariDataSource;
+    public HikariDataSource mysqlDataSource(@Qualifier("mysqlDataSourceProperties") DataSourceProperties properties) {
+        return properties.initializeDataSourceBuilder().type(HikariDataSource.class).build();
     }
 
 
@@ -48,8 +47,9 @@ public class MysqlDataSourceConfig {
     @Primary
     @Bean(name = "mysqlSqlSessionFactory")
     public SqlSessionFactory mysqlSqlSessionFactory(@Qualifier("mysqlDataSource") DataSource dataSource) throws Exception {
-        SqlSessionFactoryBean factory = new SqlSessionFactoryBean();
+        MybatisSqlSessionFactoryBean factory = new MybatisSqlSessionFactoryBean();
         factory.setDataSource(dataSource);
+        factory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath:/mapper/**/*.xml"));
         return factory.getObject();
     }
 }

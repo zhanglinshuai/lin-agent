@@ -23,35 +23,42 @@ public class User {
     /**
      * 用户名称
      */
+    @TableField("userName")
     private String userName;
 
     /**
      * 用户手机号
      */
+    @TableField("userPhone")
     private String userPhone;
 
     /**
      * 验证码
      */
+    @TableField("verificationCode")
     private String verificationCode;
 
     /**
      * 用户密码
      */
+    @TableField("userPassword")
     private String userPassword;
 
     /**
      * 创建时间
      */
+    @TableField("createTime")
     private Date createTime;
 
     /**
      * 是否删除 1-删除 0-不删除
      */
+    @TableField("isDelete")
     private Integer isDelete;
 
     /**
      * 更新时间
      */
+    @TableField("updateTime")
     private Date updateTime;
 }
