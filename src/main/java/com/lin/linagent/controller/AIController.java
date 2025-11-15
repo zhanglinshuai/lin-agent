@@ -30,15 +30,15 @@ public class AIController {
         return emotionApp.doChat(message,chatId);
     }
     @GetMapping(value = "/emotion/chat/sse",produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<String> doChatWithEmotionAppSSE(String message,String chatId){
-        return emotionApp.doChatByStream(message,chatId);
+    public Flux<String> doChatWithEmotionAppSSE(String message,String chatId,String userId){
+        return emotionApp.doChatByStream(message,chatId,userId);
     }
     @GetMapping("/emotion/chat/sse/emitter")
-    public SseEmitter doChatWithEmotionAppSseEmitter(String message, String chatId) {
+    public SseEmitter doChatWithEmotionAppSseEmitter(String message, String chatId,String userId) {
         // 创建一个超时时间较长的 SseEmitter
         SseEmitter emitter = new SseEmitter(180000L); // 3分钟超时
         // 获取 Flux 数据流并直接订阅
-        emotionApp.doChatByStream(message, chatId)
+        emotionApp.doChatByStream(message, chatId,userId)
                 .subscribe(
                         // 处理每条消息
                         chunk -> {

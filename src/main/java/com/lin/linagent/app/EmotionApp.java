@@ -8,7 +8,8 @@ import com.alibaba.dashscope.common.Role;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.alibaba.dashscope.exception.UploadFileException;
 import com.lin.linagent.advisor.MyLoggerAdvisor;
-import com.lin.linagent.chatMemory.CustomMysqlChatMemoryRepositoryDialect;
+import com.lin.linagent.chatMemory.CustomJdbcChatMemoryRepository;
+import com.lin.linagent.chatMemory.dialect.CustomMysqlJdbcChatMemoryRepositoryDialect;
 import com.lin.linagent.contant.CommonVariables;
 import com.lin.linagent.multirecall.MultiRecall;
 import com.lin.linagent.multirecall.RecallResultMerger;
@@ -19,7 +20,7 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
-import org.springframework.ai.chat.memory.repository.jdbc.JdbcChatMemoryRepository;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
@@ -97,9 +98,9 @@ public class EmotionApp {
                 "root",
                 "123456"
         );
-        ChatMemoryRepository chatMemoryRepository = JdbcChatMemoryRepository.builder()
+        ChatMemoryRepository chatMemoryRepository = CustomJdbcChatMemoryRepository.builder()
                 .jdbcTemplate(new JdbcTemplate(dataSource))
-                .dialect(new CustomMysqlChatMemoryRepositoryDialect())
+                .dialect(new CustomMysqlJdbcChatMemoryRepositoryDialect())
                 .build();
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .chatMemoryRepository(chatMemoryRepository)
@@ -294,11 +295,24 @@ public class EmotionApp {
         return chatResponse.getResult().getOutput().getText();
     }
 
-    public Flux<String> doChatByStream(String message,String chatId){
+    /**
+     * 流式返回结果
+     * @param message
+     * @param chatId
+     * @param userId
+     * @return
+     */
+    public Flux<String> doChatByStream(String message,String chatId,String userId){
+        //将userId存入到metadata当中
+        UserMessage userMessage = new UserMessage(message);
+        Map<String, Object> metadata = userMessage.getMetadata();
+        metadata.put("userId", userId);
         return chatClient
                 .prompt()
-                .user(message)
-                .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID,chatId))
+                .messages(userMessage)
+                .advisors(advisorSpec ->
+                        advisorSpec.param(ChatMemory.CONVERSATION_ID,chatId)
+                )
                 .stream()
                 .content();
     }

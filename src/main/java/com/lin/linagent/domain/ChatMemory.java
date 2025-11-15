@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.util.Date;
+import java.util.Map;
+
+import jakarta.json.Json;
 import lombok.Data;
 
 /**
@@ -43,4 +46,9 @@ public class ChatMemory {
      * 当前会话的用户id
      */
     private String user_id;
+
+    /**
+     * 元数据
+     */
+    private String metadata;
 }

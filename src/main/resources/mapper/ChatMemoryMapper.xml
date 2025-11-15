@@ -11,9 +11,10 @@
             <result property="message_type" column="message_type" />
             <result property="create_time" column="create_time" />
             <result property="user_id" column="user_id" />
+            <result property="metadata" column="metadata"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,conversation_id,content,message_type,create_time,user_id
+        id,conversation_id,content,message_type,create_time,user_id,metadata
     </sql>
 </mapper>

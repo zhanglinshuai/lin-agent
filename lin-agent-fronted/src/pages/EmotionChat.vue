@@ -44,37 +44,40 @@ function send() {
   try {
     const uid = localStorage.getItem('user_id')
     if (!uid) { showLoginModal.value = true; return }
+    const userId = uid
+    messages.value.push({role: 'user', content: text})
+    messages.value.push({role: 'assistant', content: '', loading: true, complete: false})
+    input.value = ''
+    resizeTextarea()
+    const idx = messages.value.length - 1
+    currentStream?.close()
+    currentStream = openEmotionSSE(
+        text,
+        chatId.value,
+        userId,
+        (chunk) => {
+          messages.value[idx].content += chunk
+          if (messages.value[idx].loading) messages.value[idx].loading = false
+          nextTick(() => {
+            const el = messagesPanelRef.value
+            if (el) el.scrollTop = el.scrollHeight
+          })
+        },
+        () => {
+          const msg = messages.value[idx]
+          if (msg && msg.role === 'assistant') { msg.loading = false; msg.complete = true }
+        },
+        () => {
+          const msg = messages.value[idx]
+          if (msg && msg.role === 'assistant') { msg.loading = false; msg.complete = true }
+        }
+    )
+    nextTick(() => {
+      const el = messagesPanelRef.value
+      if (el) el.scrollTop = el.scrollHeight
+    })
+    return
   } catch(e) { showLoginModal.value = true; return }
-  messages.value.push({role: 'user', content: text})
-  messages.value.push({role: 'assistant', content: '', loading: true, complete: false})
-  input.value = ''
-  resizeTextarea()
-  const idx = messages.value.length - 1
-  currentStream?.close()
-  currentStream = openEmotionSSE(
-      text,
-      chatId.value,
-      (chunk) => {
-        messages.value[idx].content += chunk
-        if (messages.value[idx].loading) messages.value[idx].loading = false
-        nextTick(() => {
-          const el = messagesPanelRef.value
-          if (el) el.scrollTop = el.scrollHeight
-        })
-      },
-      () => {
-        const msg = messages.value[idx]
-        if (msg && msg.role === 'assistant') { msg.loading = false; msg.complete = true }
-      },
-      () => {
-        const msg = messages.value[idx]
-        if (msg && msg.role === 'assistant') { msg.loading = false; msg.complete = true }
-      }
-  )
-  nextTick(() => {
-    const el = messagesPanelRef.value
-    if (el) el.scrollTop = el.scrollHeight
-  })
 }
 
 onMounted(() => {

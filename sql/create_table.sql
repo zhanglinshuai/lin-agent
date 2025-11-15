@@ -7,7 +7,8 @@ create table chat_memory
     content         text         not null comment '消息内容',
     message_type    varchar(50)  not null comment '消息类型',
     create_time     timestamp    not null comment '创建时间',
-    user_id         varchar(255) null comment '当前会话的用户id'
+    user_id         varchar(255) null comment '当前会话的用户id',
+    metadata        text         null comment '元数据'
 )
     comment '存储消息';
 

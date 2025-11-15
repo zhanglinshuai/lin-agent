@@ -1,5 +1,5 @@
-export function openEmotionSSE(message, chatId, onChunk, onDone, onError) {
-    const params = new URLSearchParams({message, chatId})
+export function openEmotionSSE(message, chatId, userId, onChunk, onDone, onError) {
+    const params = new URLSearchParams({message, chatId, userId})
     const es = new EventSource(`/api/ai/emotion/chat/sse/emitter?${params.toString()}`)
     let closed = false
     es.onmessage = (e) => {
