@@ -11,11 +11,7 @@ const messages = ref([])
 let currentStream = null
 const showSidebar = ref(true)
 const showAvatarMenu = ref(false)
-const history = ref([
-  {title: '最近对话 1'},
-  {title: '最近对话 2'},
-  {title: '最近对话 3'},
-])
+const history = ref()
 const sidebarPeek = ref(false)
 const hideCollapse = ref(false)
 const peekHovering = ref(false)
@@ -33,6 +29,8 @@ const userMessages = computed(() => messages.value.filter(m => m && m.role === '
 const assistantMessages = computed(() => messages.value.filter(m => m && m.role === 'assistant'))
 const router = useRouter()
 const activeConversationId = ref('')
+let streamBuf = new Map()
+let flushTimer = null
 
 function genChatId() {
   if (crypto && crypto.randomUUID) return crypto.randomUUID()
@@ -58,20 +56,50 @@ function send() {
         chatId.value,
         userId,
         (chunk) => {
-          messages.value[idx].content += chunk
-          if (messages.value[idx].loading) messages.value[idx].loading = false
-          nextTick(() => {
-            const el = messagesPanelRef.value
-            if (el) el.scrollTop = el.scrollHeight
-          })
+          const prev = streamBuf.get(idx) || ''
+          streamBuf.set(idx, prev + chunk)
+          if (!flushTimer) {
+            flushTimer = setTimeout(() => {
+              for (const [i, s] of streamBuf.entries()) {
+                const msg = messages.value[i]
+                if (msg && s) {
+                  msg.content += s
+                }
+              }
+              streamBuf.clear()
+              nextTick(() => {
+                const el = messagesPanelRef.value
+                if (el) el.scrollTop = el.scrollHeight
+              })
+              flushTimer = null
+            }, 50)
+          }
         },
         () => {
+          if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
+          for (const [i, s] of streamBuf.entries()) {
+            const msg = messages.value[i]
+            if (msg && s) {
+              msg.content += s
+            }
+          }
+          streamBuf.clear()
           const msg = messages.value[idx]
           if (msg && msg.role === 'assistant') { msg.loading = false; msg.complete = true }
+          fetchChatMemoryList()
         },
         () => {
+          if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
+          for (const [i, s] of streamBuf.entries()) {
+            const msg = messages.value[i]
+            if (msg && s) {
+              msg.content += s
+            }
+          }
+          streamBuf.clear()
           const msg = messages.value[idx]
           if (msg && msg.role === 'assistant') { msg.loading = false; msg.complete = true }
+          fetchChatMemoryList()
         }
     )
     nextTick(() => {
@@ -96,6 +124,8 @@ onBeforeUnmount(() => {
   if (sidebarRef.value && sidebarRef.value.removeEventListener) {
     sidebarRef.value.removeEventListener('transitionend', onSidebarTransitionEnd)
   }
+  if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
+  streamBuf.clear()
 })
 
 function handleEnter(e) {
@@ -144,7 +174,14 @@ function toggleAvatarMenu() {
 function startConversation() {
   messages.value = []
   chatId.value = genChatId()
-  activeConversationId.value = ''
+  activeConversationId.value = String(chatId.value)
+  const exists = history.value.some(h => h?.raw && String(h.raw.conversationId) === activeConversationId.value)
+  if (!exists) {
+    history.value = [
+      { title: '新对话', raw: { conversationId: activeConversationId.value } },
+      ...history.value,
+    ]
+  }
 }
 
 function openSettings() {
@@ -284,24 +321,39 @@ async function fetchChatMemoryList() {
         if (typeof v === 'string') return Date.parse(v) || 0
         return 0
       }
+      const getMetaTitle = (m) => {
+        const meta = m?.metadata
+        if (!meta) return ''
+        if (typeof meta === 'string') {
+          try { const obj = JSON.parse(meta); return String(obj?.title || obj?.conversationTitle || '') } catch(e) { return '' }
+        }
+        if (typeof meta === 'object') return String(meta?.title || meta?.conversationTitle || '')
+        return ''
+      }
+      const isUserMsg = (m) => {
+        const mt = m?.message_type ?? m?.messageType ?? m?.type
+        if (typeof mt === 'string') { const s = mt.toLowerCase(); return s === 'user' || s === 'u' || s === 'human' || s.includes('用户') }
+        if (typeof mt === 'number') return mt === 0
+        const sender = String(m?.role ?? m?.sender ?? '').toLowerCase()
+        return m?.isUser === true || sender.includes('user') || sender.includes('用户')
+      }
       const groups = payload.reduce((acc, it) => {
         const cid = it?.conversationId
         if (!cid) return acc
         const key = String(cid)
         const ts = getTs(it)
-        const title = String(it?.conversationName || it?.title || it?.name || key)
-        if (!acc[key]) {
-          acc[key] = { conversationId: key, title, ts }
-        } else {
-          if (ts < acc[key].ts) {
-            acc[key].ts = ts
-            acc[key].title = title
-          }
+        const fallback = String(it?.conversationName || it?.title || it?.name || key)
+        if (!acc[key]) acc[key] = { conversationId: key, ts: Number.POSITIVE_INFINITY, minUserTs: Number.POSITIVE_INFINITY, titleUser: '', fallbackTitle: '' }
+        if (ts < acc[key].ts) { acc[key].ts = ts; acc[key].fallbackTitle = fallback }
+        if (isUserMsg(it)) {
+          const mt = getMetaTitle(it)
+          if (mt && ts < acc[key].minUserTs) { acc[key].minUserTs = ts; acc[key].titleUser = mt }
         }
         return acc
       }, {})
       const list = Object.values(groups)
-        .sort((a,b) => (a.ts || 0) - (b.ts || 0))
+        .map(g => ({ conversationId: g.conversationId, ts: g.ts, title: g.titleUser || g.fallbackTitle }))
+        .sort((a,b) => (b.ts || 0) - (a.ts || 0))
         .map((g) => ({ title: g.title, raw: { conversationId: g.conversationId } }))
       history.value = list
     }
@@ -516,10 +568,8 @@ function renderMarkdown(md) {
           </div>
           <div class="messages-panel" ref="messagesPanelRef" v-if="messages.length">
             <template v-for="(m, i) in messages" :key="'m-'+i">
-              <div v-if="m.role==='assistant' && m.loading && !m.content" class="reply-card assistant loading">
-                <div class="progress"><div class="bar"></div></div>
-              </div>
-              <div v-else-if="m.role==='assistant'" class="reply-card assistant">
+              <div v-if="m.role==='assistant'" class="reply-card assistant" :class="{ loading: m.loading }">
+                <div v-if="m.loading && !m.content" class="loader"><span></span><span></span><span></span></div>
                 <div class="msg-content" v-html="renderMarkdown(m.content)"></div>
                 <div class="msg-tools" v-if="m.complete">
                   <div class="copy-wrap">
@@ -1125,6 +1175,47 @@ function renderMarkdown(md) {
 }
 .reply-card.loading {
   background: rgba(255, 255, 255, 0.4);
+}
+.reply-card .progress {
+  width: 100%;
+  height: 6px;
+  background: #eef2ff;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.reply-card .progress .bar {
+  position: relative;
+  height: 100%;
+  width: 40%;
+  left: -40%;
+  background: #2459d8;
+  opacity: .6;
+  border-radius: 6px;
+  animation: progressSlide 1.1s infinite ease;
+}
+.reply-card .loader { margin-bottom: 6px; }
+.reply-card.loading .progress {
+  width: 100%;
+  height: 6px;
+  background: #eef2ff;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.reply-card.loading .progress .bar {
+  position: relative;
+  height: 100%;
+  width: 40%;
+  left: -40%;
+  background: #2459d8;
+  opacity: .6;
+  border-radius: 6px;
+  animation: progressSlide 1.1s infinite ease;
+}
+@keyframes progressSlide {
+  0% { left: -40%; width: 40%; }
+  50% { left: 20%; width: 60%; }
+  100% { left: 100%; width: 40%; }
 }
 .loader {
   display: inline-flex;

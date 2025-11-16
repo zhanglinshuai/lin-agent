@@ -140,12 +140,14 @@ public final class CustomJdbcChatMemoryRepository implements ChatMemoryRepositor
                 });
                 String userId = (String) map.get("userId");
                 String messageType = (String) map.get("messageType");
+                String title = (String) map.get("title");
                 return switch (type) {
                     case USER -> {
                         UserMessage userMessage = new UserMessage(content);
                         Map<String, Object> userMessageMetadata = userMessage.getMetadata();
                         userMessageMetadata.put("userId",userId);
                         userMessageMetadata.put("messageType",messageType);
+                        userMessageMetadata.put("title",title);
                         yield userMessage;
                     }
                     case ASSISTANT -> new AssistantMessage(content);

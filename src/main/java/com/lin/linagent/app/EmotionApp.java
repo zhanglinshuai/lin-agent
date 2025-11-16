@@ -1,5 +1,6 @@
 package com.lin.linagent.app;
 
+import com.alibaba.dashscope.aigc.completion.ChatCompletion;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversation;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationParam;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
@@ -20,6 +21,7 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -37,6 +39,7 @@ import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.stereotype.Component;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
 import javax.sql.DataSource;
@@ -44,6 +47,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 情感大师应用功能
@@ -57,6 +62,8 @@ public class EmotionApp {
     private VectorStore EmotionVectorStore;
 
     private final ChatClient chatClient;
+
+    private final CustomJdbcChatMemoryRepository customChatMemoryRepository;
 
     @Resource
     private ResourcePatternResolver resourcePatternResolver;
@@ -78,7 +85,7 @@ public class EmotionApp {
     private ToolCallback[] allTools;
 
     @Resource
-    private ToolCallbackProvider  toolCallbackProvider;
+    private ToolCallbackProvider toolCallbackProvider;
 
     /**
      * ai支持多轮对话能力
@@ -87,7 +94,7 @@ public class EmotionApp {
      *
      * @param dashscopeChatModel
      */
-    public EmotionApp(ChatModel dashscopeChatModel,MultiRecall multiRecall,RecallResultMerger recallResultMerger) {
+    public EmotionApp(ChatModel dashscopeChatModel, MultiRecall multiRecall, RecallResultMerger recallResultMerger) {
         this.resourcePatternResolver = new PathMatchingResourcePatternResolver();
         this.multiRecall = multiRecall;
         this.recallResultMerger = recallResultMerger;
@@ -98,10 +105,11 @@ public class EmotionApp {
                 "root",
                 "123456"
         );
-        ChatMemoryRepository chatMemoryRepository = CustomJdbcChatMemoryRepository.builder()
+        CustomJdbcChatMemoryRepository chatMemoryRepository = CustomJdbcChatMemoryRepository.builder()
                 .jdbcTemplate(new JdbcTemplate(dataSource))
                 .dialect(new CustomMysqlJdbcChatMemoryRepositoryDialect())
                 .build();
+        this.customChatMemoryRepository = chatMemoryRepository;
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .chatMemoryRepository(chatMemoryRepository)
                 .maxMessages(10)
@@ -194,6 +202,7 @@ public class EmotionApp {
     /**
      * 使用rag知识库进行对话
      * 使用QuestionAnswerAdvisor
+     *
      * @param message
      * @param chatId
      * @return
@@ -238,6 +247,7 @@ public class EmotionApp {
 
     /**
      * 通过多路召回的方式得到结果
+     *
      * @param message
      * @param chatId
      * @return
@@ -248,7 +258,7 @@ public class EmotionApp {
         List<Document> multiRecallDocuments = multiRecall.recall(message);
         List<Document> finalDocuments = recallResultMerger.mergeAndRank(multiRecallDocuments);
         for (int i = 0; i < finalDocuments.size(); i++) {
-            query.append("文档").append(i+1).append(":").append(finalDocuments.get(i).getText()).append("\n");
+            query.append("文档").append(i + 1).append(":").append(finalDocuments.get(i).getText()).append("\n");
         }
         query.append("\n问题:").append(message).append("\n");
         ChatResponse chatResponse = chatClient
@@ -257,11 +267,12 @@ public class EmotionApp {
                 .user(query.toString())
                 .call()
                 .chatResponse();
-        return  chatResponse.getResult().getOutput().getText();
+        return chatResponse.getResult().getOutput().getText();
     }
 
     /**
      * 使用ai工具对话
+     *
      * @param message
      * @param chatId
      * @return
@@ -279,6 +290,7 @@ public class EmotionApp {
 
     /**
      * 使用mcp与ai对话
+     *
      * @param message
      * @param chatId
      * @return
@@ -297,25 +309,93 @@ public class EmotionApp {
 
     /**
      * 流式返回结果
+     *
      * @param message
      * @param chatId
      * @param userId
      * @return
      */
-    public Flux<String> doChatByStream(String message,String chatId,String userId){
-        //将userId存入到metadata当中
+    public Flux<String> doChatByStream(String message, String chatId, String userId) {
         UserMessage userMessage = new UserMessage(message);
         Map<String, Object> metadata = userMessage.getMetadata();
         metadata.put("userId", userId);
+        String title = getOrCreateTitle(chatId, message);
+        metadata.put("title", title);
         return chatClient
                 .prompt()
                 .messages(userMessage)
                 .advisors(advisorSpec ->
-                        advisorSpec.param(ChatMemory.CONVERSATION_ID,chatId)
+                        advisorSpec.param(ChatMemory.CONVERSATION_ID, chatId)
                 )
                 .stream()
                 .content();
+
     }
 
+    private Optional<String> findExistingTitle(String conversationId) {
+        List<Message> messages = this.customChatMemoryRepository.findByConversationId(conversationId);
+        for (Message m : messages) {
+            if (m instanceof UserMessage um) {
+                Object t = um.getMetadata().get("title");
+                if (t instanceof String s && !s.isEmpty()) {
+                    return Optional.of(s);
+                }
+            }
+        }
+        return Optional.empty();
+    }
 
+    private String getOrCreateTitle(String conversationId, String userText) {
+        Optional<String> existing = findExistingTitle(conversationId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        String byModel = generateTitleWithModel(userText);
+        if (byModel != null && !byModel.isEmpty()) {
+            return byModel;
+        }
+        return generateTitle(userText);
+    }
+
+    private String generateTitle(String text) {
+        if (text == null) {
+            return "新对话";
+        }
+        String trimmed = text.trim();
+        if (trimmed.isEmpty()) {
+            return "新对话";
+        }
+        int limit = Math.min(trimmed.length(), 20);
+        return trimmed.substring(0, limit);
+    }
+
+    private String generateTitleWithModel(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            String content = ChatClient.builder(dashscopeChatModel)
+                    .build()
+                    .prompt()
+                    .system("你是标题生成器。基于用户输入生成一个简洁的会话标题。只返回标题本身，不要解释，不要标点，不要引号，不要换行。不超过12个中文字符或6个英文词。")
+                    .user(text)
+                    .call()
+                    .content();
+            if (content == null) {
+                return null;
+            }
+            String t = content.trim();
+            int nl = t.indexOf('\n');
+            if (nl >= 0) {
+                t = t.substring(0, nl);
+            }
+            t = t.replace("\"", "").replace("“", "").replace("”", "");
+            if (t.length() > 20) {
+                t = t.substring(0, 20);
+            }
+            return t;
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }
