@@ -446,7 +446,7 @@ function renderMarkdown(md) {
   let inUl = false
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
-    if (/^```/.test(line)) {
+    if (/^\s*```/.test(line)) {
       if (!inCode) {
         inCode = true
         codeBuf = []
@@ -461,7 +461,7 @@ function renderMarkdown(md) {
       codeBuf.push(line)
       continue
     }
-    const m = line.match(/^(#{1,6})\s+(.*)$/)
+    const m = line.match(/^\s{0,3}(#{1,6})\s*(.+)$/)
     if (m) {
       if (inUl) {
         html += '</ul>'
@@ -471,7 +471,7 @@ function renderMarkdown(md) {
       html += `<h${level}>` + renderInline(m[2]) + `</h${level}>`
       continue
     }
-    const li = line.match(/^[-*]\s+(.*)$/)
+    const li = line.match(/^\s*[-*+]\s+(.*)$/)
     if (li) {
       if (!inUl) {
         inUl = true
