@@ -45,14 +45,35 @@ public class ChatMemoryServiceImpl extends ServiceImpl<ChatMemoryMapper, ChatMem
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户不存在");
         }
         String id = user.getId();
-        //根据用户的id，在chat_memory中查询用户id的conversationId
-        List<ChatMemory> chatMemoryList = chatMemoryMapper.selectList(new QueryWrapper<ChatMemory>().eq("user_id", id));
-        if(chatMemoryList.isEmpty()){
+        String subSql = String.format(
+                "SELECT conversation_id, MAX(create_time) " +
+                        "FROM chat_memory WHERE user_id = '%s' GROUP BY conversation_id",
+                id
+        );
+        //查询出当前用户的所有对话历史，然后按照conversation_id进行分组，分组后按照创建时间从晚到早排序
+        QueryWrapper<ChatMemory> chatMemoryQueryWrapper = new QueryWrapper<>();
+        chatMemoryQueryWrapper.eq("user_id",id);
+        chatMemoryQueryWrapper.inSql("(conversation_id,create_time)",subSql);
+        chatMemoryQueryWrapper.orderByDesc("create_time");
+        List<ChatMemory> chatMemoryList = chatMemoryMapper.selectList(chatMemoryQueryWrapper);
+        if (chatMemoryList.isEmpty()){
             return new ArrayList<>();
         }
-        //按照创建时间进行排序
-        chatMemoryList.sort(Comparator.comparing(ChatMemory::getCreate_time).reversed());
+        return chatMemoryList;
+    }
 
+    @Override
+    public List<ChatMemory> getUserConversation(String conversationId) {
+        if(conversationId==null||conversationId.length()==0){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"会话不存在");
+        }
+        //根据conversationId找出会话
+        QueryWrapper<ChatMemory> chatMemoryQueryWrapper = new QueryWrapper<>();
+        chatMemoryQueryWrapper.eq("conversation_id",conversationId);
+        List<ChatMemory> chatMemoryList = chatMemoryMapper.selectList(chatMemoryQueryWrapper);
+        if (chatMemoryList.isEmpty()){
+            return new ArrayList<>();
+        }
         return chatMemoryList;
     }
 

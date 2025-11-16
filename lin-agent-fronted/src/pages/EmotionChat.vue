@@ -32,6 +32,7 @@ const sidebarRef = ref(null)
 const userMessages = computed(() => messages.value.filter(m => m && m.role === 'user'))
 const assistantMessages = computed(() => messages.value.filter(m => m && m.role === 'assistant'))
 const router = useRouter()
+const activeConversationId = ref('')
 
 function genChatId() {
   if (crypto && crypto.randomUUID) return crypto.randomUUID()
@@ -45,6 +46,7 @@ function send() {
     const uid = localStorage.getItem('user_id')
     if (!uid) { showLoginModal.value = true; return }
     const userId = uid
+    if (!chatId.value) chatId.value = genChatId()
     messages.value.push({role: 'user', content: text})
     messages.value.push({role: 'assistant', content: '', loading: true, complete: false})
     input.value = ''
@@ -86,6 +88,7 @@ onMounted(() => {
   if (sidebarRef.value && sidebarRef.value.addEventListener) {
     sidebarRef.value.addEventListener('transitionend', onSidebarTransitionEnd)
   }
+  fetchChatMemoryList()
 })
 
 onBeforeUnmount(() => {
@@ -141,6 +144,7 @@ function toggleAvatarMenu() {
 function startConversation() {
   messages.value = []
   chatId.value = genChatId()
+  activeConversationId.value = ''
 }
 
 function openSettings() {
@@ -169,11 +173,49 @@ function onLogout() {
   try { localStorage.removeItem('user_name') } catch(e) {}
 }
 
-function openHistory(i) {
+async function openHistory(i) {
   const item = history.value[i]
   if (!item) return
-  input.value = item.title
-  resizeTextarea()
+  const raw = item.raw || {}
+  let username = ''
+  try { username = localStorage.getItem('user_name') || '' } catch(e) { username = '' }
+  const cid = raw.conversationId
+  if (!cid) {
+    input.value = item.title
+    resizeTextarea()
+    return
+  }
+  activeConversationId.value = String(cid)
+  chatId.value = activeConversationId.value
+  let res
+  try {
+    res = await axios.get('/api/chat_memory/getConversation', { params: { conversationId: cid } })
+  } catch(e) {
+    showToast((e?.response?.data?.message) || '会话消息加载失败')
+    return
+  }
+  const data = res && res.data
+  const arr = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : [])
+  if (!Array.isArray(arr)) return
+  messages.value = arr.map((m) => {
+    const text = String(m?.content ?? m?.message ?? m?.text ?? '')
+    const mt = m?.message_type ?? m?.messageType ?? m?.type
+    let isUser
+    if (typeof mt === 'string') {
+      const s = mt.toLowerCase()
+      isUser = s === 'user' || s === 'u' || s === 'human' || s.includes('用户')
+    } else if (typeof mt === 'number') {
+      isUser = mt === 0
+    } else {
+      const sender = String(m?.role ?? m?.sender ?? '').toLowerCase()
+      isUser = m?.isUser === true || sender.includes('user') || sender.includes('用户')
+    }
+    return { role: isUser ? 'user' : 'assistant', content: text, loading: false, complete: true }
+  })
+  nextTick(() => {
+    const el = messagesPanelRef.value
+    if (el) el.scrollTop = el.scrollHeight
+  })
 }
 
 function onExpandHover(hover) {
@@ -226,6 +268,50 @@ function showToast(text) {
   setTimeout(() => { toastVisible.value = false }, 1500)
 }
 
+const loadingHistory = ref(false)
+async function fetchChatMemoryList() {
+  let username = ''
+  try { username = localStorage.getItem('user_name') || '' } catch(e) { username = '' }
+  if (!username) return
+  loadingHistory.value = true
+  try {
+    const res = await axios.get('/api/chat_memory/getChatMemoryList', { params: { username } })
+    const payload = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.data) ? res.data.data : [])
+    if (Array.isArray(payload)) {
+      const getTs = (m) => {
+        const v = m?.timestamp ?? m?.time ?? m?.createdAt ?? m?.createTime ?? m?.gmtCreate ?? m?.gmt_created
+        if (typeof v === 'number') return v
+        if (typeof v === 'string') return Date.parse(v) || 0
+        return 0
+      }
+      const groups = payload.reduce((acc, it) => {
+        const cid = it?.conversationId
+        if (!cid) return acc
+        const key = String(cid)
+        const ts = getTs(it)
+        const title = String(it?.conversationName || it?.title || it?.name || key)
+        if (!acc[key]) {
+          acc[key] = { conversationId: key, title, ts }
+        } else {
+          if (ts < acc[key].ts) {
+            acc[key].ts = ts
+            acc[key].title = title
+          }
+        }
+        return acc
+      }, {})
+      const list = Object.values(groups)
+        .sort((a,b) => (a.ts || 0) - (b.ts || 0))
+        .map((g) => ({ title: g.title, raw: { conversationId: g.conversationId } }))
+      history.value = list
+    }
+  } catch(e) {
+    showToast((e?.response?.data?.message) || '会话列表加载失败')
+  } finally {
+    loadingHistory.value = false
+  }
+}
+
 async function submitLogin() {
   loginError.value = ''
   if (!loginAccount.value.trim() || !loginPassword.value.trim()) {
@@ -263,6 +349,7 @@ async function submitLogin() {
   } catch(e) {}
   showLoginModal.value = false
   showToast('登录成功')
+  fetchChatMemoryList()
 }
 
 function copyMessage(text, i) {
@@ -400,10 +487,13 @@ function renderMarkdown(md) {
         <div class="sidebar-bottom">
           <div class="history-title">历史对话</div>
           <div class="history-list">
-            <div class="history-item" v-for="(h, i) in history" :key="'h-'+i" @click="openHistory(i)">{{
-                h.title
-              }}
-            </div>
+            <div
+              class="history-item"
+              v-for="(h, i) in history"
+              :key="'h-'+i"
+              :class="{ active: h?.raw && String(h.raw.conversationId) === activeConversationId }"
+              @click="openHistory(i)"
+            >{{ h.title }}</div>
           </div>
         </div>
       </aside>
@@ -698,6 +788,11 @@ function renderMarkdown(md) {
 
 .history-item:hover {
   background: linear-gradient(rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.06)), #f4f5f7;
+}
+
+.history-item.active {
+  background: #e9ecef;
+  font-weight: 600;
 }
 
 .content {

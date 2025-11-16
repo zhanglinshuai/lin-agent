@@ -20,4 +20,10 @@ public interface ChatMemoryService extends IService<ChatMemory> {
      */
     List<ChatMemory> getUserConversationList(String username);
 
+    /**
+     * 获取用户的指定会话内容
+     * @param conversationId
+     * @return
+     */
+    List<ChatMemory> getUserConversation(String conversationId);
 }

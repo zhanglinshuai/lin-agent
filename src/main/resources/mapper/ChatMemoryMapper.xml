@@ -6,11 +6,11 @@
 
     <resultMap id="BaseResultMap" type="com.lin.linagent.domain.ChatMemory">
             <id property="id" column="id" />
-            <result property="conversation_id" column="conversation_id" />
+            <result property="conversationId" column="conversation_id" />
             <result property="content" column="content" />
-            <result property="message_type" column="message_type" />
-            <result property="create_time" column="create_time" />
-            <result property="user_id" column="user_id" />
+            <result property="messageType" column="message_type" />
+            <result property="createTime" column="create_time" />
+            <result property="userId" column="user_id" />
             <result property="metadata" column="metadata"/>
     </resultMap>
 

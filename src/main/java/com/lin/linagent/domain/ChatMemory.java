@@ -1,12 +1,11 @@
 package com.lin.linagent.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.util.Date;
-import java.util.Map;
 
-import jakarta.json.Json;
 import lombok.Data;
 
 /**
@@ -25,30 +24,36 @@ public class ChatMemory {
     /**
      * 会话id
      */
-    private String conversation_id;
+    @TableField("conversation_id")
+    private String conversationId;
 
     /**
      * 消息内容
      */
+    @TableField("content")
     private String content;
 
     /**
      * 消息类型
      */
-    private String message_type;
+    @TableField("message_type")
+    private String messageType;
 
     /**
      * 创建时间
      */
-    private Date create_time;
+    @TableField("create_time")
+    private Date createTime;
 
     /**
      * 当前会话的用户id
      */
-    private String user_id;
+    @TableField("user_id")
+    private String userId;
 
     /**
      * 元数据
      */
+    @TableField("metadata")
     private String metadata;
 }
