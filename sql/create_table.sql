@@ -12,6 +12,7 @@ create table chat_memory
 )
     comment '存储消息';
 
+-- auto-generated definition
 create table user
 (
     id               varchar(255)                       not null
@@ -20,9 +21,9 @@ create table user
     userPhone        varchar(255)                       null comment '用户手机号',
     verificationCode varchar(255)                       null comment '验证码',
     userPassword     varchar(255)                       null comment '用户密码',
+    userAvatar       varchar(512)                       null comment '用户头像',
     createTime       datetime default CURRENT_TIMESTAMP null comment '创建时间',
     isDelete         int      default 0                 not null comment '是否删除 1-删除 0-不删除',
     updateTime       datetime default CURRENT_TIMESTAMP not null comment '更新时间'
 );
-
 

@@ -78,6 +78,43 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return user.getId();
     }
 
+    @Override
+    public User getUserInfo(String userId) {
+        if(userId==null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户不存在");
+        }
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("id",userId);
+        User user = this.getOne(queryWrapper);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户不存在");
+        }
+
+        return user;
+    }
+
+    @Override
+    public User updateUserInfo(User newUser) {
+        if(newUser==null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"新用户信息为空");
+        }
+        String userId = newUser.getId();
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("id",userId);
+        User user = userMapper.selectOne(queryWrapper);
+        if(user==null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户不存在");
+        }
+        //判断前后用户信息是否相同，如果相同就不用更新直接返回就可以
+        if(newUser.equals(user)){
+            return user;
+        }
+        int update = userMapper.updateById(newUser);
+        if (update != 1) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"更新失败");
+        }
+        return newUser;
+    }
 
 
     /**

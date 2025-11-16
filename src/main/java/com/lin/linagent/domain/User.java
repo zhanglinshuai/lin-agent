@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.util.Date;
+import java.util.Objects;
+
 import lombok.Data;
 
 /**
@@ -37,6 +39,11 @@ public class User {
      */
     @TableField("verificationCode")
     private String verificationCode;
+    /**
+     * 用户头像
+     */
+    @TableField("userAvatar")
+    private String userAvatar;
 
     /**
      * 用户密码
@@ -61,4 +68,32 @@ public class User {
      */
     @TableField("updateTime")
     private Date updateTime;
+
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "id='" + id + '\'' +
+                ", userName='" + userName + '\'' +
+                ", userPhone='" + userPhone + '\'' +
+                ", verificationCode='" + verificationCode + '\'' +
+                ", userAvatar='" + userAvatar + '\'' +
+                ", userPassword='" + userPassword + '\'' +
+                ", createTime=" + createTime +
+                ", isDelete=" + isDelete +
+                ", updateTime=" + updateTime +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        User user = (User) o;
+        return Objects.equals(getId(), user.getId()) && Objects.equals(getUserName(), user.getUserName()) && Objects.equals(getUserPhone(), user.getUserPhone()) && Objects.equals(getVerificationCode(), user.getVerificationCode()) && Objects.equals(getUserAvatar(), user.getUserAvatar()) && Objects.equals(getUserPassword(), user.getUserPassword()) && Objects.equals(getCreateTime(), user.getCreateTime()) && Objects.equals(getIsDelete(), user.getIsDelete()) && Objects.equals(getUpdateTime(), user.getUpdateTime());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getId(), getUserName(), getUserPhone(), getVerificationCode(), getUserAvatar(), getUserPassword(), getCreateTime(), getIsDelete(), getUpdateTime());
+    }
 }

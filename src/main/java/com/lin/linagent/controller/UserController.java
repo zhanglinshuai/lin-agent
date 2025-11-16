@@ -2,16 +2,14 @@ package com.lin.linagent.controller;
 
 import com.lin.linagent.common.BaseResponse;
 import com.lin.linagent.common.ResultUtils;
+import com.lin.linagent.domain.User;
 import com.lin.linagent.domain.dto.UserLoginRequest;
 import com.lin.linagent.domain.dto.UserRegisterRequest;
 import com.lin.linagent.exception.BusinessException;
 import com.lin.linagent.exception.ErrorCode;
 import com.lin.linagent.service.UserService;
 import jakarta.annotation.Resource;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * 用户相关操作
@@ -43,5 +41,28 @@ public class UserController {
         }
         String userId = userService.userLogin(username, password);
         return ResultUtils.success(userId);
+    }
+
+
+    @GetMapping("/getUserInfo")
+    public BaseResponse<User> getUserInfo(String userId){
+        if(userId==null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户不存在");
+        }
+        User user = userService.getUserInfo(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户不存在");
+        }
+        return ResultUtils.success(user);
+    }
+
+
+    @PostMapping("/updateUserInfo")
+    public BaseResponse<User> updateUserInfo(User user){
+        if(user==null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"新用户信息为空");
+        }
+        User newUser = userService.updateUserInfo(user);
+        return ResultUtils.success(newUser);
     }
 }

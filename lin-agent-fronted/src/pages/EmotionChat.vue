@@ -31,6 +31,15 @@ const router = useRouter()
 const activeConversationId = ref('')
 let streamBuf = new Map()
 let flushTimer = null
+const inSettings = ref(false)
+const settingTab = ref('profile')
+const profile = ref({ nickname: '', email: '' })
+const accountForm = ref({ password: '', newPassword: '', confirmPassword: '' })
+const userProfile = ref({ id: '', userName: '', userPhone: '', verificationCode: '', userAvatar: '', createTime: '', updateTime: '', isDelete: '' })
+const savingProfile = ref(false)
+const avatarUploading = ref(false)
+const avatarFileInput = ref(null)
+const showLogoutConfirm = ref(false)
 
 function genChatId() {
   if (crypto && crypto.randomUUID) return crypto.randomUUID()
@@ -45,8 +54,8 @@ function send() {
     if (!uid) { showLoginModal.value = true; return }
     const userId = uid
     if (!chatId.value) chatId.value = genChatId()
-    messages.value.push({role: 'user', content: text})
-    messages.value.push({role: 'assistant', content: '', loading: true, complete: false})
+  messages.value.push({role: 'user', content: text})
+  messages.value.push({role: 'assistant', content: '', loading: true, complete: false})
     input.value = ''
     resizeTextarea()
     const idx = messages.value.length - 1
@@ -109,6 +118,8 @@ function send() {
     return
   } catch(e) { showLoginModal.value = true; return }
 }
+
+//
 
 onMounted(() => {
   chatId.value = genChatId()
@@ -182,6 +193,7 @@ function startConversation() {
       ...history.value,
     ]
   }
+  inSettings.value = false
 }
 
 function openSettings() {
@@ -197,17 +209,29 @@ function logout() {
 }
 
 function onOpenSettings() {
-  showToast('打开设置')
+  inSettings.value = true
+  settingTab.value = 'profile'
   showAvatarMenu.value = false
+  fetchUserProfile()
 }
 
 function onLogout() {
-  showToast('已退出登录')
+  showLogoutConfirm.value = true
   showAvatarMenu.value = false
+}
+
+function confirmLogout() {
+  showToast('已退出登录')
   try { localStorage.removeItem('auth_token') } catch(e) {}
-  showLoginModal.value = true
   try { localStorage.removeItem('user_id') } catch(e) {}
   try { localStorage.removeItem('user_name') } catch(e) {}
+  showLogoutConfirm.value = false
+  inSettings.value = false
+  showLoginModal.value = true
+}
+
+function cancelLogout() {
+  showLogoutConfirm.value = false
 }
 
 async function openHistory(i) {
@@ -361,6 +385,95 @@ async function fetchChatMemoryList() {
     showToast((e?.response?.data?.message) || '会话列表加载失败')
   } finally {
     loadingHistory.value = false
+  }
+}
+
+async function fetchUserProfile() {
+  let userId = ''
+  try { userId = localStorage.getItem('user_id') || '' } catch(e) { userId = '' }
+  if (!userId) return
+  let res
+  try {
+    res = await axios.get('/api/user/getUserInfo', { params: { userId } })
+  } catch(e) { return }
+  const raw = res.data && (res.data.data || res.data)
+  if (raw && typeof raw === 'object') {
+    userProfile.value.id = String(raw.id ?? '')
+    userProfile.value.userName = String(raw.userName ?? '')
+    userProfile.value.userPhone = String(raw.userPhone ?? '')
+    userProfile.value.verificationCode = String(raw.verificationCode ?? '')
+    userProfile.value.userAvatar = String(raw.userAvatar ?? '')
+    userProfile.value.createTime = String(raw.createTime ?? '')
+    userProfile.value.updateTime = String(raw.updateTime ?? '')
+    userProfile.value.isDelete = String(raw.isDelete ?? '')
+  }
+}
+
+async function submitProfileUpdate() {
+  if (!userProfile.value.id || !userProfile.value.userName) {
+    showToast('请完善必要信息')
+    return
+  }
+  if (savingProfile.value) return
+  savingProfile.value = true
+  const form = new URLSearchParams()
+  form.append('id', userProfile.value.id)
+  form.append('userName', userProfile.value.userName)
+  form.append('userPhone', userProfile.value.userPhone || '')
+  form.append('userAvatar', userProfile.value.userAvatar || '')
+  let res
+  try {
+    res = await axios.post('/api/user/updateUserInfo', form, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
+  } catch (e) {
+    savingProfile.value = false
+    showToast('保存失败')
+    return
+  }
+  savingProfile.value = false
+  const raw = res && res.data && (res.data.data || res.data)
+  if (raw && typeof raw === 'object') {
+    userProfile.value.userName = String(raw.userName ?? userProfile.value.userName)
+    userProfile.value.userPhone = String(raw.userPhone ?? userProfile.value.userPhone)
+    userProfile.value.userAvatar = String(raw.userAvatar ?? userProfile.value.userAvatar)
+    try { localStorage.setItem('user_name', String(userProfile.value.userName || '')) } catch(e) {}
+  }
+  showToast('已保存')
+}
+
+function pickAvatar() {
+  avatarFileInput.value && avatarFileInput.value.click && avatarFileInput.value.click()
+}
+
+async function onAvatarChange(e) {
+  const f = e && e.target && e.target.files && e.target.files[0]
+  if (!f) return
+  if (avatarUploading.value) return
+  const fd = new FormData()
+  fd.append('file', f)
+  fd.append('userId', userProfile.value.id || '')
+  avatarUploading.value = true
+  const tries = [
+    { url: '/api/uploadAvatar' },
+    { url: '/api/user/uploadAvatar' },
+    { url: '/api/user/avatar' },
+    { url: '/api/file/upload' },
+  ]
+  let res
+  for (let i = 0; i < tries.length; i++) {
+    try {
+      res = await axios.post(tries[i].url, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      break
+    } catch(e) {}
+  }
+  avatarUploading.value = false
+  if (!res) { showToast('上传失败'); return }
+  const raw = res.data && (res.data.data || res.data)
+  const url = (typeof raw === 'string') ? raw : (raw && (raw.url || raw.path || raw.avatar || raw.userAvatar))
+  if (url) {
+    userProfile.value.userAvatar = String(url)
+    showToast('上传成功')
+  } else {
+    showToast('上传失败')
   }
 }
 
@@ -551,7 +664,7 @@ function renderMarkdown(md) {
       </aside>
       <div v-if="!showSidebar" class="hover-handle" @mouseenter="onPeekEnter"
            @mouseleave="onPeekLeave"></div>
-        <div class="content" :class="{ empty: !messages.length }" @click="showAvatarMenu=false" @mousemove="onEdgeHover" @mouseleave="onEdgeLeave">
+        <div class="content" :class="{ empty: !messages.length && !inSettings }" @click="showAvatarMenu=false" @mousemove="onEdgeHover" @mouseleave="onEdgeLeave">
           <div class="content-top">
             <button v-if="!showSidebar" class="expand-btn icon-btn small" @click="toggleSidebar()"
                     @mouseenter="onExpandHover(true)" @mouseleave="onExpandHover(false)" title="展开侧栏">
@@ -566,17 +679,51 @@ function renderMarkdown(md) {
               <button class="menu-item" @click="onLogout">退出登录</button>
             </div>
           </div>
-          <div class="messages-panel" ref="messagesPanelRef" v-if="messages.length">
+          <div class="settings-panel" v-if="inSettings">
+            <div class="settings-wrap">
+              <div class="settings-nav">
+                <button :class="{ active: settingTab==='profile' }" @click="settingTab='profile'; fetchUserProfile()">个人资料</button>
+                <button :class="{ active: settingTab==='account' }" @click="settingTab='account'">账号设置</button>
+                <button :class="{ active: settingTab==='logout' }" @click="settingTab='logout'">退出登录</button>
+              </div>
+              <div class="settings-content">
+                <div v-if="settingTab==='profile'" class="panel-card">
+                  <div class="panel-title">个人资料</div>
+                  <div class="avatar-line">
+                    <img v-if="userProfile.userAvatar" :src="userProfile.userAvatar" alt="avatar" class="profile-avatar" @click="pickAvatar" title="点击更换头像"/>
+                    <input ref="avatarFileInput" type="file" accept="image/*" @change="onAvatarChange" style="display:none" />
+                    <button class="outline-btn" :disabled="avatarUploading" @click="pickAvatar">{{ avatarUploading ? '上传中...' : (userProfile.userAvatar ? '更换头像' : '上传头像') }}</button>
+                  </div>
+                  <label class="form-label">ID</label>
+                  <input class="form-input" v-model="userProfile.id" disabled />
+                  <label class="form-label">用户名</label>
+                  <input class="form-input" v-model="userProfile.userName" placeholder="请输入用户名" />
+                  <label class="form-label">手机号</label>
+                  <input class="form-input" v-model="userProfile.userPhone" placeholder="请输入手机号" />
+                  <button class="primary-btn" :disabled="savingProfile" @click="submitProfileUpdate">{{ savingProfile ? '保存中...' : '保存' }}</button>
+                </div>
+                <div v-else-if="settingTab==='account'" class="panel-card">
+                  <div class="panel-title">账号设置</div>
+                  <label class="form-label">当前密码</label>
+                  <input class="form-input" type="password" v-model="accountForm.password" placeholder="请输入当前密码"/>
+                  <label class="form-label">新密码</label>
+                  <input class="form-input" type="password" v-model="accountForm.newPassword" placeholder="请输入新密码"/>
+                  <label class="form-label">确认新密码</label>
+                  <input class="form-input" type="password" v-model="accountForm.confirmPassword" placeholder="请再次输入新密码"/>
+                  <button class="primary-btn" @click="showToast('已保存')">保存</button>
+                </div>
+                <div v-else class="panel-card">
+                  <div class="panel-title">退出登录</div>
+                  <button class="danger-btn" @click="onLogout">退出登录</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="messages-panel" ref="messagesPanelRef" v-else-if="messages.length">
             <template v-for="(m, i) in messages" :key="'m-'+i">
               <div v-if="m.role==='assistant'" class="reply-card assistant" :class="{ loading: m.loading }">
                 <div v-if="m.loading && !m.content" class="loader"><span></span><span></span><span></span></div>
                 <div class="msg-content" v-html="renderMarkdown(m.content)"></div>
-                <div class="msg-tools" v-if="m.complete">
-                  <div class="copy-wrap">
-                    <button class="copy-btn" @click="copyMessage(m.content, i)" title="复制">📋</button>
-                    <div class="hover-tip">复制</div>
-                  </div>
-                </div>
               </div>
               <div v-else class="reply-card user" v-html="renderMarkdown(m.content)"></div>
             </template>
@@ -590,7 +737,7 @@ function renderMarkdown(md) {
               </div>
             </div>
           </div>
-          <div class="compose-card">
+          <div class="compose-card" v-if="!inSettings">
             <div class="placeholder">给 情感大师 发送消息</div>
             <div class="compose-area">
               <textarea
@@ -618,6 +765,18 @@ function renderMarkdown(md) {
               <input class="modal-input" type="password" v-model="loginPassword" placeholder="请输入密码" />
               <div class="modal-error" v-if="loginError">{{ loginError }}</div>
               <button class="modal-submit" :disabled="loginLoading || !loginAccount || !loginPassword" @click="submitLogin">{{ loginLoading ? '登录中...' : '登录' }}</button>
+            </div>
+          </div>
+        </div>
+        <div v-if="showLogoutConfirm" class="modal-mask" @click.self="cancelLogout">
+          <div class="modal-card">
+            <div class="modal-title">确认退出登录？</div>
+            <div class="modal-form">
+              <div class="modal-text">退出登录不会丢失任何数据，仍然可以登录此账号。</div>
+              <div class="confirm-actions">
+                <button class="modal-submit" @click="cancelLogout">取消</button>
+                <button class="danger-btn" @click="confirmLogout">确认退出</button>
+              </div>
             </div>
           </div>
         </div>
@@ -971,7 +1130,10 @@ function renderMarkdown(md) {
   text-align: left;
   border: none;
   background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
 }
+.menu-item:hover { background: #f4f5f7; }
 
 .hero-page {
   display: flex;
@@ -1116,50 +1278,8 @@ function renderMarkdown(md) {
   word-break: break-word;
   box-sizing: border-box;
 }
-.msg-tools {
-  display: flex;
-  justify-content: flex-start;
-  margin-top: 6px;
-}
-.copy-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: none;
-  background: #fff;
-  color: #2f6bff;
-  cursor: pointer;
-}
-.copy-btn:disabled {
-  opacity: .5;
-  cursor: not-allowed;
-}
-.copy-btn:hover:not(:disabled) {
-  background: #f4f5f7;
-}
-.copy-wrap {
-  position: relative;
-  display: inline-block;
-}
-.hover-tip {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  transform: translateY(-6px);
-  background: #000;
-  color: #fff;
-  padding: 6px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .15s ease, transform .15s ease;
-}
-.copy-wrap:hover .hover-tip {
-  opacity: 1;
-  transform: translateY(-10px);
-}
+.msg-tools { display: none; }
+/* removed copy/like tool styles */
 .global-toast {
   position: fixed;
   left: 50%;
@@ -1265,7 +1385,7 @@ function renderMarkdown(md) {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 24px;
   overflow-y: auto;
   padding: 0 8px;
 }
@@ -1280,6 +1400,53 @@ function renderMarkdown(md) {
 .messages-panel::-webkit-scrollbar {
   display: none;
 }
+.settings-panel {
+  width: min(960px, 96vw);
+  margin: 0 auto;
+}
+.settings-wrap {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 16px;
+}
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.settings-nav button {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.settings-nav button:hover { background: #f4f5f7; }
+.settings-nav button.active {
+  background: #f4f5f7;
+}
+.settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.panel-card {
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #fff;
+  padding: 16px;
+}
+.avatar-line { margin-bottom: 10px; }
+.profile-avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 1px solid var(--color-border); }
+.outline-btn { padding: 8px 12px; border: 1px solid var(--color-border); background: #fff; border-radius: 8px; margin-left: 10px; cursor: pointer; }
+.outline-btn:disabled { opacity: .6; cursor: not-allowed; }
+.panel-title { font-weight: 700; margin-bottom: 10px; }
+.form-label { font-size: 13px; opacity: .8; margin-top: 8px; }
+.form-input { width: 100%; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 8px; cursor: text; }
+.primary-btn { margin-top: 10px; padding: 10px 12px; border: none; border-radius: 8px; background: #2459d8; color: #fff; font-weight: 700; cursor: pointer; }
+.profile-avatar { cursor: pointer; }
+.danger-btn { margin-top: 10px; padding: 10px 12px; border: none; border-radius: 8px; background: #ef4444; color: #fff; font-weight: 700; }
 .modal-mask {
   position: fixed;
   left: 0;
@@ -1305,8 +1472,9 @@ function renderMarkdown(md) {
 .modal-label { font-size: 13px; opacity: .8; }
 .modal-input { border: 1px solid var(--color-border); border-radius: 8px; padding: 10px 12px; font-size: 15px; outline: none; }
 .modal-error { color: #ef4444; font-size: 13px; min-height: 18px; }
-.modal-submit { margin-top: 8px; padding: 10px 12px; border-radius: 999px; border: none; background: #2459d8; color: #fff; font-weight: 700; }
+.modal-submit { margin-top: 8px; padding: 10px 12px; border-radius: 8px; border: none; background: #2459d8; color: #fff; font-weight: 700; }
 .modal-submit:disabled { opacity: .6; cursor: not-allowed; }
+.confirm-actions { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }
 @media (max-width: 1280px) {
   .layout { --sidebar-w: 260px; }
 }

@@ -10,13 +10,14 @@
             <result property="userPhone" column="userPhone" />
             <result property="verificationCode" column="verificationCode" />
             <result property="userPassword" column="userPassword" />
+            <result property="userAvatar" column="userAvatar"/>
             <result property="createTime" column="createTime" />
             <result property="isDelete" column="isDelete" />
             <result property="updateTime" column="updateTime" />
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,userName,userPhone,verificationCode,userPassword,createTime,
+        id,userName,userPhone,verificationCode,userPassword,userAvatar,createTime,
         isDelete,updateTime
     </sql>
 </mapper>
