@@ -29,6 +29,9 @@ const userMessages = computed(() => messages.value.filter(m => m && m.role === '
 const assistantMessages = computed(() => messages.value.filter(m => m && m.role === 'assistant'))
 const router = useRouter()
 const activeConversationId = ref('')
+const loggedIn = ref(false)
+const DEFAULT_AVATAR = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect fill='%23f4f5f7' width='64' height='64'/><circle cx='32' cy='24' r='12' fill='%239aa0a6'/><rect x='12' y='40' width='40' height='14' rx='7' fill='%239aa0a6'/></svg>`
+const topAvatarUrl = ref(DEFAULT_AVATAR)
 let streamBuf = new Map()
 let flushTimer = null
 const inSettings = ref(false)
@@ -40,6 +43,33 @@ const savingProfile = ref(false)
 const avatarUploading = ref(false)
 const avatarFileInput = ref(null)
 const showLogoutConfirm = ref(false)
+
+const apiBase = '/api'
+function normalizeAvatarUrl(u) {
+  const s = String(u || '').trim()
+  if (!s) return ''
+  let p = s.replace(/\\/g, '/')
+  // Already static mapped
+  if (p.startsWith('/static/')) return apiBase.replace(/\/+$/,'') + p
+  // Full URL cases
+  if (/^https?:\/\//i.test(p)) {
+    // If it's already a static avatar url, use as-is
+    if (/\/static\/avatar\//.test(p)) { const m = p.match(/\/static\/avatar\/([^\/?#]+)/); if (m) return apiBase.replace(/\/+$/,'') + '/static/avatar/' + m[1]; return apiBase.replace(/\/+$/,'') + '/static/avatar/'; }
+    // If it points to /upload/avatar/, rewrite to /static/avatar/<filename>
+    const mUp = p.match(/\/upload\/avatar\/([^/?#]+)$/)
+    if (mUp) return apiBase.replace(/\/+$/,'') + '/static/avatar/' + mUp[1]
+    // If the path ends with an avatar filename, try to map to static
+    const mAny = p.match(/\/(avatar_[^/?#]+)$/)
+    if (mAny) return apiBase.replace(/\/+$/,'') + '/static/avatar/' + mAny[1]
+    return p
+  }
+  // Local/relative filesystem-like path
+  const mFs = p.match(/(?:^|\/)avatar\/([^/]+)$/)
+  if (mFs) return apiBase.replace(/\/+$/,'') + '/static/avatar/' + mFs[1]
+  const mTail = p.match(/([^/]+)$/)
+  if (mTail) return apiBase.replace(/\/+$/,'') + '/static/avatar/' + mTail[1]
+  return apiBase.replace(/\/+$/,'') + '/static' + (p.startsWith('/') ? p : '/' + p)
+}
 
 function genChatId() {
   if (crypto && crypto.randomUUID) return crypto.randomUUID()
@@ -96,6 +126,7 @@ function send() {
           const msg = messages.value[idx]
           if (msg && msg.role === 'assistant') { msg.loading = false; msg.complete = true }
           fetchChatMemoryList()
+  fetchUserProfile()
         },
         () => {
           if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
@@ -124,10 +155,21 @@ function send() {
 onMounted(() => {
   chatId.value = genChatId()
   resizeTextarea()
+  let uid = ''
+  try { uid = localStorage.getItem('user_id') || '' } catch(e) { uid = '' }
+  showSidebar.value = !!uid
+  loggedIn.value = !!uid
   if (sidebarRef.value && sidebarRef.value.addEventListener) {
     sidebarRef.value.addEventListener('transitionend', onSidebarTransitionEnd)
   }
   fetchChatMemoryList()
+  fetchUserProfile()
+  try {
+    const raw = localStorage.getItem('user_avatar') || ''
+    const nu = normalizeAvatarUrl(raw)
+    topAvatarUrl.value = nu || DEFAULT_AVATAR
+    if (nu && nu !== raw) localStorage.setItem('user_avatar', nu)
+  } catch(e) {}
 })
 
 onBeforeUnmount(() => {
@@ -220,14 +262,31 @@ function onLogout() {
   showAvatarMenu.value = false
 }
 
-function confirmLogout() {
+function onLoginMenu() {
+  showAvatarMenu.value = false
+  showLoginModal.value = true
+}
+
+async function confirmLogout() {
+  try {
+    await axios.post('/api/user/exit')
+  } catch (e) {
+  }
   showToast('已退出登录')
   try { localStorage.removeItem('auth_token') } catch(e) {}
   try { localStorage.removeItem('user_id') } catch(e) {}
   try { localStorage.removeItem('user_name') } catch(e) {}
+  try { localStorage.removeItem('user_avatar') } catch(e) {}
+  topAvatarUrl.value = DEFAULT_AVATAR
   showLogoutConfirm.value = false
   inSettings.value = false
   showLoginModal.value = true
+  showSidebar.value = false
+  loggedIn.value = false
+  loginAccount.value = ''
+  loginPassword.value = ''
+  loginError.value = ''
+  location.reload()
 }
 
 function cancelLogout() {
@@ -235,6 +294,7 @@ function cancelLogout() {
 }
 
 async function openHistory(i) {
+  inSettings.value = false
   const item = history.value[i]
   if (!item) return
   const raw = item.raw || {}
@@ -313,10 +373,12 @@ function onSidebarTransitionEnd(e) {
 }
 
 function onEdgeHover(e) {
+  if (!loggedIn.value) return
   if (!showSidebar.value && e && e.clientX <= 24) onPeekEnter()
 }
 
 function onEdgeLeave() {
+  if (!loggedIn.value) return
   if (!showSidebar.value) onPeekLeave()
 }
 
@@ -380,6 +442,9 @@ async function fetchChatMemoryList() {
         .sort((a,b) => (b.ts || 0) - (a.ts || 0))
         .map((g) => ({ title: g.title, raw: { conversationId: g.conversationId } }))
       history.value = list
+      if (!activeConversationId.value && Array.isArray(history.value) && history.value.length > 0 && !inSettings.value) {
+        openHistory(0)
+      }
     }
   } catch(e) {
     showToast((e?.response?.data?.message) || '会话列表加载失败')
@@ -402,10 +467,17 @@ async function fetchUserProfile() {
     userProfile.value.userName = String(raw.userName ?? '')
     userProfile.value.userPhone = String(raw.userPhone ?? '')
     userProfile.value.verificationCode = String(raw.verificationCode ?? '')
-    userProfile.value.userAvatar = String(raw.userAvatar ?? '')
+    userProfile.value.userAvatar = normalizeAvatarUrl(raw.userAvatar ?? '')
     userProfile.value.createTime = String(raw.createTime ?? '')
     userProfile.value.updateTime = String(raw.updateTime ?? '')
     userProfile.value.isDelete = String(raw.isDelete ?? '')
+    if (userProfile.value.userAvatar) {
+      topAvatarUrl.value = userProfile.value.userAvatar
+      try { localStorage.setItem('user_avatar', userProfile.value.userAvatar) } catch(e) {}
+    } else {
+      topAvatarUrl.value = DEFAULT_AVATAR
+      try { localStorage.removeItem('user_avatar') } catch(e) {}
+    }
   }
 }
 
@@ -452,25 +524,23 @@ async function onAvatarChange(e) {
   fd.append('file', f)
   fd.append('userId', userProfile.value.id || '')
   avatarUploading.value = true
-  const tries = [
-    { url: '/api/uploadAvatar' },
-    { url: '/api/user/uploadAvatar' },
-    { url: '/api/user/avatar' },
-    { url: '/api/file/upload' },
-  ]
   let res
-  for (let i = 0; i < tries.length; i++) {
-    try {
-      res = await axios.post(tries[i].url, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-      break
-    } catch(e) {}
+  try {
+    res = await axios.post('/api/user/uploadAvatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+  } catch(e) {
+    avatarUploading.value = false
+    showToast('上传失败')
+    return
   }
   avatarUploading.value = false
   if (!res) { showToast('上传失败'); return }
   const raw = res.data && (res.data.data || res.data)
   const url = (typeof raw === 'string') ? raw : (raw && (raw.url || raw.path || raw.avatar || raw.userAvatar))
   if (url) {
-    userProfile.value.userAvatar = String(url)
+    const nu = normalizeAvatarUrl(url)
+    userProfile.value.userAvatar = nu
+    topAvatarUrl.value = nu
+    try { localStorage.setItem('user_avatar', nu) } catch(e) {}
     showToast('上传成功')
   } else {
     showToast('上传失败')
@@ -515,6 +585,9 @@ async function submitLogin() {
   showLoginModal.value = false
   showToast('登录成功')
   fetchChatMemoryList()
+  fetchUserProfile()
+  showSidebar.value = true
+  loggedIn.value = true
 }
 
 function copyMessage(text, i) {
@@ -662,21 +735,25 @@ function renderMarkdown(md) {
           </div>
         </div>
       </aside>
-      <div v-if="!showSidebar" class="hover-handle" @mouseenter="onPeekEnter"
+      <div v-if="!showSidebar && loggedIn" class="hover-handle" @mouseenter="onPeekEnter"
            @mouseleave="onPeekLeave"></div>
         <div class="content" :class="{ empty: !messages.length && !inSettings }" @click="showAvatarMenu=false" @mousemove="onEdgeHover" @mouseleave="onEdgeLeave">
           <div class="content-top">
-            <button v-if="!showSidebar" class="expand-btn icon-btn small" @click="toggleSidebar()"
+            <button v-if="!showSidebar && loggedIn" class="expand-btn icon-btn small" @click="toggleSidebar()"
                     @mouseenter="onExpandHover(true)" @mouseleave="onExpandHover(false)" title="展开侧栏">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
                 <rect x="13" y="5" width="8" height="14" rx="2" fill="currentColor"/>
               </svg>
             </button>
-            <div class="avatar" @click.stop="toggleAvatarMenu">🙂</div>
+            <div class="avatar" @click.stop="toggleAvatarMenu">
+              <img v-if="topAvatarUrl" :src="topAvatarUrl" alt="avatar" class="avatar-img"/>
+              <template v-else>🙂</template>
+            </div>
             <div v-if="showAvatarMenu" class="avatar-menu">
               <button class="menu-item" @click="onOpenSettings">设置</button>
-              <button class="menu-item" @click="onLogout">退出登录</button>
+              <button v-if="loggedIn" class="menu-item" @click="onLogout">退出登录</button>
+              <button v-else class="menu-item" @click="onLoginMenu">登录</button>
             </div>
           </div>
           <div class="settings-panel" v-if="inSettings">
@@ -700,7 +777,7 @@ function renderMarkdown(md) {
                   <input class="form-input" v-model="userProfile.userName" placeholder="请输入用户名" />
                   <label class="form-label">手机号</label>
                   <input class="form-input" v-model="userProfile.userPhone" placeholder="请输入手机号" />
-                  <button class="primary-btn" :disabled="savingProfile" @click="submitProfileUpdate">{{ savingProfile ? '保存中...' : '保存' }}</button>
+                  <button class="primary-btn" :disabled="savingProfile" @click="submitProfileUpdate">{{ savingProfile ? '修改中...' : '修改个人信息' }}</button>
                 </div>
                 <div v-else-if="settingTab==='account'" class="panel-card">
                   <div class="panel-title">账号设置</div>
@@ -1111,6 +1188,7 @@ function renderMarkdown(md) {
   justify-content: center;
   cursor: pointer;
 }
+.avatar-img { width: 100%; height: 100%; border-radius: 999px; object-fit: cover; display: block; }
 
 .avatar-menu {
   position: absolute;
@@ -1436,6 +1514,8 @@ function renderMarkdown(md) {
   border-radius: 14px;
   background: #fff;
   padding: 16px;
+  display: flex;
+  flex-direction: column;
 }
 .avatar-line { margin-bottom: 10px; }
 .profile-avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 1px solid var(--color-border); }
@@ -1444,9 +1524,11 @@ function renderMarkdown(md) {
 .panel-title { font-weight: 700; margin-bottom: 10px; }
 .form-label { font-size: 13px; opacity: .8; margin-top: 8px; }
 .form-input { width: 100%; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 8px; cursor: text; }
-.primary-btn { margin-top: 10px; padding: 10px 12px; border: none; border-radius: 8px; background: #2459d8; color: #fff; font-weight: 700; cursor: pointer; }
+.primary-btn { margin-top: 10px; padding: 12px 16px; border: none; border-radius: 8px; background: #2459d8; color: #fff; font-weight: 700; cursor: pointer; font-size: 15px; }
 .profile-avatar { cursor: pointer; }
 .danger-btn { margin-top: 10px; padding: 10px 12px; border: none; border-radius: 8px; background: #ef4444; color: #fff; font-weight: 700; }
+.panel-card .primary-btn { align-self: flex-end; }
+.panel-card .danger-btn { align-self: flex-end; }
 .modal-mask {
   position: fixed;
   left: 0;

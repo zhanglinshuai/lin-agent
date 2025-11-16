@@ -9,7 +9,10 @@ import com.lin.linagent.exception.BusinessException;
 import com.lin.linagent.exception.ErrorCode;
 import com.lin.linagent.service.UserService;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+import org.jsoup.Connection;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 用户相关操作
@@ -64,5 +67,25 @@ public class UserController {
         }
         User newUser = userService.updateUserInfo(user);
         return ResultUtils.success(newUser);
+    }
+    @PostMapping("/uploadAvatar")
+    public BaseResponse<String> uploadAvatar(MultipartFile file, String userId){
+        if(userId==null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户不存在");
+        }
+        if(file.isEmpty()){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"上传文件不存在");
+        }
+        String avatarUrl = userService.uploadAvatar(file, userId);
+        return ResultUtils.success(avatarUrl);
+    }
+
+    @PostMapping("/exit")
+    public void logout(HttpServletRequest request){
+        if (request==null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"请求错误");
+        }
+        //session失效
+        request.getSession().invalidate();
     }
 }

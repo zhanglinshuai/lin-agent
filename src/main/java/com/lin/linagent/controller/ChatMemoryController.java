@@ -34,16 +34,17 @@ public class ChatMemoryController {
         return userConversationList;
     }
 
+    /**
+     * 获取属于conversationId下的所有对话
+     * @param conversationId
+     * @return
+     */
     @GetMapping("/getConversation")
     public List<ChatMemory> getUserConversation(String conversationId){
         if(conversationId==null){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"会话不存在");
         }
-        List<ChatMemory> userConversation = chatMemoryService.getUserConversation(conversationId);
-        if(userConversation==null || userConversation.isEmpty()){
-            throw new BusinessException(ErrorCode.PARAMS_ERROR,"会话不存在");
-        }
-        return userConversation;
+        return chatMemoryService.getUserConversation(conversationId);
     }
 
 }

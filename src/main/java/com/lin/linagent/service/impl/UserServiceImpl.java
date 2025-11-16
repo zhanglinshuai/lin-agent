@@ -13,8 +13,15 @@ import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+
+import static com.lin.linagent.contant.CommonVariables.UPLOAD_PATH;
 
 /**
 * @author zhanglinshuai
@@ -114,6 +121,44 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"更新失败");
         }
         return newUser;
+    }
+
+    @Override
+    public String uploadAvatar(MultipartFile file,String userId) {
+        if(file.isEmpty()){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"上传文件为空");
+        }
+        String contentType = file.getContentType();
+        if(contentType==null || !contentType.startsWith("image/")){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"上传的文件只能是图片类型");
+        }
+        // 3. 生成文件名：userId + UUID
+        String suffix = Objects.requireNonNull(file.getOriginalFilename())
+                .substring(file.getOriginalFilename().lastIndexOf("."));
+
+        String fileName = "avatar_" + userId + "_" + UUID.randomUUID() + suffix;
+
+        // 4. 创建保存目录
+        File dir = new File(UPLOAD_PATH);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+        File dest = new File(dir, fileName);
+        try {
+            file.transferTo(dest);
+        } catch (IOException e) {
+            throw new RuntimeException("头像上传失败",e);
+        }
+        String fileUrl = UPLOAD_PATH + fileName;
+        User user = userMapper.selectById(userId);
+        if(user==null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户不存在");
+        }
+        //设置avatar字段
+        String publicPath = "/static/avatar/" + fileName;
+        user.setUserAvatar(publicPath);
+        userMapper.updateById(user);
+        return publicPath;
     }
 
 

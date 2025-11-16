@@ -67,5 +67,8 @@ public interface CommonVariables {
      * 对密码进行加密
      */
     String ENCRYPT_PASSWORD = "zhanglinshuai";
-
+    /**
+     * 图片上传保存路径
+     */
+    String UPLOAD_PATH = "C:/upload/avatar/";
 }
