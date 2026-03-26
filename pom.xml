@@ -43,7 +43,7 @@
             <dependency>
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>
-                <version>1.0.0</version>
+                <version>1.0.2</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -65,6 +65,10 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
         <!--lombok-->
         <dependency>
@@ -142,12 +146,16 @@
         </dependency>
 
 
-
-        <!--mcp依赖-->
-        <!-- https://mvnrepository.com/artifact/org.springframework.ai/spring-ai-mcp -->
+        <!--mcp客户端启用-->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-mcp-client</artifactId>
+        </dependency>
+        <!-- MCP SDK (core + http client SSE transport via aggregate) -->
+        <dependency>
+            <groupId>io.modelcontextprotocol.sdk</groupId>
+            <artifactId>mcp</artifactId>
+            <version>0.16.0</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/com.alibaba/dashscope-sdk-java
@@ -164,6 +172,14 @@
             <artifactId>spring-ai-alibaba-starter-dashscope</artifactId>
         </dependency>
 
+
+        <!-- https://mvnrepository.com/artifact/com.alibaba.cloud.ai/spring-ai-alibaba-graph-core -->
+        <dependency>
+            <groupId>com.alibaba.cloud.ai</groupId>
+            <artifactId>spring-ai-alibaba-graph-core</artifactId>
+            <version>1.1.0.0-M5</version>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/dev.langchain4j/langchain4j-community-dashscope -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -175,6 +191,12 @@
             <groupId>com.github.victools</groupId>
             <artifactId>jsonschema-generator</artifactId>
             <version>4.38.0</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
         </dependency>
         <!--jdbcChatMemoryRepository依赖包-->
         <dependency>

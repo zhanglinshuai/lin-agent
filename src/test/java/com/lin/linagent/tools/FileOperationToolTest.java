@@ -17,10 +17,12 @@ class FileOperationToolTest {
 
     @Test
     void writeFile() {
+    }
+
+    @Test
+    void listFiles() {
         FileOperationTool fileOperationTool = new FileOperationTool();
-        String fileName = "编程导航.txt";
-        String content ="https://www.codefather.cn 程序员编程学习交流社区";
-        String result = fileOperationTool.writeFile(fileName, content);
+        String result = fileOperationTool.listFiles();
         System.out.println(result);
     }
 }

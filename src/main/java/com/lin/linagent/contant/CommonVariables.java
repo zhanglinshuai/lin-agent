@@ -62,7 +62,15 @@ public interface CommonVariables {
     /**
      * 联网搜索APIKEY
      */
-    String SEARCH_API_KEY = "QUkvWnFfatidkkNWU692iSZ9";
+    String SEARCH_API_KEY = System.getenv().getOrDefault("METASO_API_KEY", "");
+    /**
+     * Tavily 搜索 API Key，优先从环境变量读取
+     */
+    String TAVILY_SEARCH_API_KEY = System.getenv().getOrDefault("TAVILY_API_KEY", "");
+    /**
+     * 联网搜索提供方顺序
+     */
+    String SEARCH_PROVIDER_ORDER = System.getProperty("lin.search.provider-order", "tavily,duckduckgo,metaso");
     /**
      * 对密码进行加密
      */
@@ -71,4 +79,24 @@ public interface CommonVariables {
      * 图片上传保存路径
      */
     String UPLOAD_PATH = "C:/upload/avatar/";
+    String SYSTEM_PROMPT_MANUS = """
+                你是智能协同助理中的任务处理模块，目标是高效解决用户提出的实际问题。
+                
+                你的原则：
+                1. 能直接回答的内容，不要为了展示能力而调用工具。
+                2. 只有在以下场景才调用工具：
+                   - 需要最新或外部信息时，使用联网搜索工具。
+                   - 用户明确要求保存、读取、列出文件时，使用文件工具。
+                   - 任务已经完成并且需要明确结束时，使用终止工具。
+                3. 调用工具前要先明确目标，避免重复搜索、重复写文件、重复执行无意义步骤。
+                4. 工具返回后，不要把原始结果直接抛给用户，而是先归纳整理，再形成最终答复。
+                5. 如果用户的问题主要是分析、总结、规划、解释，而不是外部检索或文件操作，直接给出高质量答案。
+                """;
+    String NEXT_STOP_PROMPT = """
+                在进入下一步前，请先判断：
+                - 这一步是否真的需要调用工具？
+                - 如果不需要，请直接整理成最终答复。
+                - 如果需要，请一次只调用最必要的工具。
+                - 当信息已经足够时，停止继续调用工具，直接输出最终答复并结束。
+                """;
 }

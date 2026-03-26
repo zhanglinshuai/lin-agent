@@ -1,6 +1,7 @@
 package com.lin.linagent.service;
 
 import com.lin.linagent.domain.ChatMemory;
+import com.lin.linagent.domain.dto.ConversationSummary;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;
@@ -18,7 +19,14 @@ public interface ChatMemoryService extends IService<ChatMemory> {
      * @param username
      * @return
      */
-    List<ChatMemory> getUserConversationList(String username);
+    List<ChatMemory> getUserConversationList(String username, String mode);
+
+    /**
+     * 获取用户会话摘要列表
+     * @param username 用户名
+     * @return 会话摘要列表
+     */
+    List<ConversationSummary> getUserConversationSummaries(String username, String mode);
 
     /**
      * 获取用户的指定会话内容

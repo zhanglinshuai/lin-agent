@@ -4,7 +4,7 @@
       "command": "java",
       "args": [
         "-Dspring.ai.mcp.server.stdio=true",
-        "-Dspring.main.web-aplication-type=none",
+        "-Dspring.main.web-application-type=none",
         "-Dlogging.pattern.console=",
         "-jar",
         "lin-image-search-mcp/target/lin-image-search-mcp-0.0.1-SNAPSHOT.jar"

@@ -26,6 +26,9 @@ public class UserController {
 
     @PostMapping("/register")
     public BaseResponse<String> userRegister(@RequestBody UserRegisterRequest  userRegisterRequest) {
+        if(userRegisterRequest == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"注册请求参数为空");
+        }
         String userName = userRegisterRequest.getUsername();
         String password = userRegisterRequest.getUserPassword();
         String checkPassword = userRegisterRequest.getCheckPassword();
@@ -37,6 +40,9 @@ public class UserController {
     }
     @PostMapping("/login")
     public BaseResponse<String> userLogin(@RequestBody UserLoginRequest userLoginRequest) {
+        if(userLoginRequest == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"登录请求参数为空");
+        }
         String username = userLoginRequest.getUserName();
         String password = userLoginRequest.getUserPassword();
         if(username==null || password==null){

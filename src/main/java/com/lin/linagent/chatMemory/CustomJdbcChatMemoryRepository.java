@@ -4,8 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lin.linagent.chatMemory.dialect.CustomJdbcChatMemoryRepositoryDialect;
-import com.lin.linagent.chatMemory.dialect.CustomMysqlJdbcChatMemoryRepositoryDialect;
-import com.lin.linagent.domain.ChatMemory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
@@ -141,6 +139,7 @@ public final class CustomJdbcChatMemoryRepository implements ChatMemoryRepositor
                 String userId = (String) map.get("userId");
                 String messageType = (String) map.get("messageType");
                 String title = (String) map.get("title");
+                String mode = (String) map.get("mode");
                 return switch (type) {
                     case USER -> {
                         UserMessage userMessage = new UserMessage(content);
@@ -148,6 +147,7 @@ public final class CustomJdbcChatMemoryRepository implements ChatMemoryRepositor
                         userMessageMetadata.put("userId",userId);
                         userMessageMetadata.put("messageType",messageType);
                         userMessageMetadata.put("title",title);
+                        userMessageMetadata.put("mode",mode);
                         yield userMessage;
                     }
                     case ASSISTANT -> new AssistantMessage(content);

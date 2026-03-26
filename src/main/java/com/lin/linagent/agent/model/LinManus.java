@@ -7,6 +7,9 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.stereotype.Component;
 
+import static com.lin.linagent.contant.CommonVariables.NEXT_STOP_PROMPT;
+import static com.lin.linagent.contant.CommonVariables.SYSTEM_PROMPT_MANUS;
+
 @Component
 @Slf4j
 public class LinManus extends ToolCallAgent{
@@ -14,21 +17,10 @@ public class LinManus extends ToolCallAgent{
     public LinManus(ToolCallback[] allTools, ChatModel dashscopeChatModel) {
         super(allTools);
         this.setName("linManus");
-        String SYSTEM_PROMPT = """
-                You are LinManus, an all-capable Ai assistant, aimed at solving any task presented by the user.
-                You have various tools at your disposal that you can call upon to efficiently complete complex requests
-                """;
-        this.setSystemPrompt(SYSTEM_PROMPT);
-        String NEXT_STOP_PROMPT = """
-                Based on user needs,proactively select the most appropriate tool or combination of tools.
-                For complex tasks, you can break down the problem and use different tools stop by stop to solve it.
-                After using each tool,clearly explain the execution results and suggest the next steps.
-                If you want to stop the interaction at any point, use the `terminate` tool /function call.
-                """;
+        this.setSystemPrompt(SYSTEM_PROMPT_MANUS);
         this.setNextStepPrompt(NEXT_STOP_PROMPT);
         this.setMaxSteps(20);
         ChatClient chatClient = ChatClient.builder(dashscopeChatModel)
-                .defaultAdvisors(new MyLoggerAdvisor())
                 .build();
         this.setChatClient(chatClient);
     }

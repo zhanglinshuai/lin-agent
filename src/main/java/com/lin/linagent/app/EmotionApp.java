@@ -1,6 +1,5 @@
 package com.lin.linagent.app;
 
-import com.alibaba.dashscope.aigc.completion.ChatCompletion;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversation;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationParam;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
@@ -19,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -39,16 +37,10 @@ import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.stereotype.Component;
-import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
 import javax.sql.DataSource;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.*;
 
 /**
  * 情感大师应用功能
@@ -316,9 +308,24 @@ public class EmotionApp {
      * @return
      */
     public Flux<String> doChatByStream(String message, String chatId, String userId) {
+        return doChatByStream(message, chatId, userId, "emotion_support");
+    }
+
+    /**
+     * 流式返回结果
+     *
+     * @param message 消息
+     * @param chatId 会话id
+     * @param userId 用户id
+     * @param tag 对话标签
+     * @return 流式结果
+     */
+    public Flux<String> doChatByStream(String message, String chatId, String userId, String tag) {
         UserMessage userMessage = new UserMessage(message);
         Map<String, Object> metadata = userMessage.getMetadata();
         metadata.put("userId", userId);
+        metadata.put("mode", "emotion");
+        metadata.put("tag", tag);
         String title = getOrCreateTitle(chatId, message);
         metadata.put("title", title);
         return chatClient

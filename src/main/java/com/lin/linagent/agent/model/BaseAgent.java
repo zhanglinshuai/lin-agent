@@ -12,6 +12,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * 基础代理类，管理代理状态和执行流程
@@ -34,6 +36,8 @@ public abstract class BaseAgent {
     private ChatClient chatClient;
     //维护上下文
     private List<Message> messageList = new ArrayList<>();
+    //执行过程回调
+    private transient Consumer<AgentProgressEvent> progressConsumer;
 
 
     /**
@@ -82,92 +86,165 @@ public abstract class BaseAgent {
             this.cleanup();
         }
     }
-    /**
-     * 运行代理（流式输出）
-     *
-     * @param userPrompt 用户提示词
-     * @return SseEmitter实例
-     */
-    public SseEmitter runStream(String userPrompt) {
-        // 创建SseEmitter，设置较长的超时时间
-        SseEmitter emitter = new SseEmitter(300000L); // 5分钟超时
 
-        // 使用线程异步处理，避免阻塞主线程
+    public SseEmitter runStream(String userPrompt) {
+        SseEmitter emitter = new SseEmitter(300000L);
         CompletableFuture.runAsync(() -> {
             try {
                 if (this.state != AgentState.IDLE) {
-                    emitter.send("错误：无法从状态运行代理: " + this.state);
+                    emitter.send("错误:" + this.state);
                     emitter.complete();
                     return;
                 }
                 if (StringUtil.isBlank(userPrompt)) {
-                    emitter.send("错误：不能使用空提示词运行代理");
+                    emitter.send("错误:空提示词");
                     emitter.complete();
                     return;
                 }
-
-                // 更改状态
                 state = AgentState.RUNNING;
-                // 记录消息上下文
                 messageList.add(new UserMessage(userPrompt));
-
                 try {
                     for (int i = 0; i < maxSteps && state != AgentState.FINISHED; i++) {
-                        int stepNumber = i + 1;
-                        currentStep = stepNumber;
-                        log.info("Executing step " + stepNumber + "/" + maxSteps);
-
-                        // 单步执行
-                        String stepResult = step();
-                        String result = "Step " + stepNumber + ": " + stepResult;
-
-                        // 发送每一步的结果
-                        emitter.send(result);
+                        currentStep = i + 1;
+                        String result = step();
+                        emitter.send(result + "\n");
                     }
-                    // 检查是否超出步骤限制
                     if (currentStep >= maxSteps) {
                         state = AgentState.FINISHED;
-                        emitter.send("执行结束: 达到最大步骤 (" + maxSteps + ")");
+                        emitter.send("执行结束:" + maxSteps);
                     }
-                    // 正常完成
                     emitter.complete();
                 } catch (Exception e) {
                     state = AgentState.ERROR;
                     log.error("执行智能体失败", e);
                     try {
-                        emitter.send("执行错误: " + e.getMessage());
+                        emitter.send("执行错误:" + e.getMessage());
                         emitter.complete();
                     } catch (Exception ex) {
                         emitter.completeWithError(ex);
                     }
                 } finally {
-                    // 清理资源
                     this.cleanup();
                 }
             } catch (Exception e) {
                 emitter.completeWithError(e);
             }
         });
-
-        // 设置超时和完成回调
         emitter.onTimeout(() -> {
             this.state = AgentState.ERROR;
             this.cleanup();
-            log.warn("SSE connection timed out");
         });
-
         emitter.onCompletion(() -> {
             if (this.state == AgentState.RUNNING) {
                 this.state = AgentState.FINISHED;
             }
             this.cleanup();
-            log.info("SSE connection completed");
         });
-
         return emitter;
     }
 
+    /**
+     * 以进度回调方式运行智能体
+     *
+     * @param userPrompt 用户输入
+     * @param consumer 进度事件回调
+     */
+    public void runWithProgress(String userPrompt, Consumer<AgentProgressEvent> consumer) {
+        if (this.state != AgentState.IDLE) {
+            throw new RuntimeException("智能体不处于空闲中:" + this.state);
+        }
+        if (StringUtils.isBlank(userPrompt)) {
+            throw new RuntimeException("用户提示词为空");
+        }
+        this.progressConsumer = consumer;
+        state = AgentState.RUNNING;
+        messageList.add(new UserMessage(userPrompt));
+        try {
+            for (int i = 0; i < maxSteps && state != AgentState.FINISHED; i++) {
+                currentStep = i + 1;
+                step();
+            }
+            if (currentStep >= maxSteps) {
+                state = AgentState.FINISHED;
+                emitProgress("error", "执行超过最大步数:" + maxSteps);
+            }
+        } catch (Exception e) {
+            state = AgentState.ERROR;
+            log.error("智能体执行错误", e);
+            emitProgress("error", "执行错误:" + e.getMessage());
+        } finally {
+            this.progressConsumer = null;
+            this.cleanup();
+        }
+    }
 
+    /**
+     * 发送执行事件
+     *
+     * @param type 事件类型
+     * @param content 事件内容
+     */
+    protected void emitProgress(String type, String content) {
+        if (this.progressConsumer == null || StringUtils.isBlank(content)) {
+            return;
+        }
+        AgentProgressEvent agentProgressEvent = new AgentProgressEvent();
+        agentProgressEvent.setType(type);
+        agentProgressEvent.setStep(currentStep);
+        agentProgressEvent.setContent(content);
+        this.progressConsumer.accept(agentProgressEvent);
+    }
+
+    /**
+     * 将较长内容切分后逐段发送，便于前端流式展示
+     *
+     * @param type 事件类型
+     * @param content 完整内容
+     */
+    protected void emitProgressChunked(String type, String content) {
+        if (StringUtils.isBlank(content)) {
+            return;
+        }
+        for (String chunk : splitForStreaming(content)) {
+            emitProgress(type, chunk);
+            try {
+                TimeUnit.MILLISECONDS.sleep(35);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+    }
+
+    /**
+     * 将长文本拆成适合流式展示的小段
+     *
+     * @param content 完整内容
+     * @return 分片结果
+     */
+    private List<String> splitForStreaming(String content) {
+        List<String> chunks = new ArrayList<>();
+        String normalized = content == null ? "" : content;
+        String[] segments = normalized.split("(?<=[。！？.!?；;\\n])");
+        for (String segment : segments) {
+            if (segment == null || segment.isEmpty()) {
+                continue;
+            }
+            String remaining = segment;
+            int chunkSize = 48;
+            while (remaining.length() > chunkSize) {
+                chunks.add(remaining.substring(0, chunkSize));
+                remaining = remaining.substring(chunkSize);
+            }
+            if (!remaining.isEmpty()) {
+                chunks.add(remaining);
+            }
+        }
+        if (chunks.isEmpty()) {
+            chunks.add(normalized);
+        }
+        return chunks;
+    }
 
 
     /**
@@ -180,7 +257,7 @@ public abstract class BaseAgent {
     /**
      * 清理资源
      */
-    protected void cleanup(){
+    protected void cleanup() {
 
     }
 }

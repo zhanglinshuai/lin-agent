@@ -1,4 +1,8 @@
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.mcp.client.autoconfigure.StdioTransportAutoConfiguration
+      - org.springframework.ai.mcp.client.autoconfigure.SseHttpClientTransportAutoConfiguration
   # elasticsearch 配置
   elasticsearch:
     username: elastic
@@ -40,11 +44,22 @@ spring:
         distance-type: COSINE_DISTANCE
         dimensions: 1536
         max-document-batch-size: 10000
-    #mcp 服务配置
+    #mcp 客户端配置（使用 stdio，读取 mcp-servers.json）
     mcp:
       client:
+        enabled: true
+        type: SYNC
         stdio:
+          enabled: true
           servers-configuration: classpath:/mcp-servers.json
+lin:
+  search:
+    # 搜索提供方按顺序尝试，推荐优先 tavily，其次 duckduckgo，最后 metaso 兜底
+    provider-order: ${LIN_SEARCH_PROVIDER_ORDER:tavily,duckduckgo,metaso}
+    # 建议在环境变量中配置 Tavily Key，以获得更好的检索质量
+    tavily-api-key: ${TAVILY_API_KEY:}
+    # 如未配置则会回退到代码中的默认 metaso key
+    metaso-api-key: ${METASO_API_KEY:}
 server:
   port: 8080
   servlet:

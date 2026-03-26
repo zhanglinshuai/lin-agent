@@ -38,6 +38,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Override
     public String userRegister(String username, String password, String checkPassword) {
+        if(StringUtils.isAnyBlank(username,password,checkPassword)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户名或密码不能为空");
+        }
+        username = username.trim();
         if(username.length()>10){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户名过长");
         }
@@ -57,6 +61,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         //对密码进行加密
         String encryptedPassword = getEncryptedPassword(password);
         User user = new User();
+        user.setId(UUID.randomUUID().toString());
         user.setUserName(username);
         user.setUserPassword(encryptedPassword);
         int insert = userMapper.insert(user);
@@ -68,6 +73,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     @Override
     public String userLogin(String username, String password) {
+        if(StringUtils.isAnyBlank(username,password)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"账号或密码为空");
+        }
+        username = username.trim();
         if(username.length()>10){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户名过长");
         }

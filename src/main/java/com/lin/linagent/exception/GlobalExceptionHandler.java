@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Slf4j
-//@RestControllerAdvice(basePackages = "com.lin.linagent.controller")
+@RestControllerAdvice(basePackages = "com.lin.linagent.controller")
 public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public BaseResponse<?> businessExceptionHandler(BusinessException e){

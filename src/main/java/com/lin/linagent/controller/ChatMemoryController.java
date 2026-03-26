@@ -1,6 +1,7 @@
 package com.lin.linagent.controller;
 
 import com.lin.linagent.domain.ChatMemory;
+import com.lin.linagent.domain.dto.ConversationSummary;
 import com.lin.linagent.exception.BusinessException;
 import com.lin.linagent.exception.ErrorCode;
 import com.lin.linagent.service.ChatMemoryService;
@@ -23,15 +24,28 @@ public class ChatMemoryController {
      * @return
      */
     @GetMapping("/getChatMemoryList")
-    public List<ChatMemory> getUserChatMemoryList(String username){
+    public List<ChatMemory> getUserChatMemoryList(String username, String mode){
         if(username==null){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"请用户先登录");
         }
-        List<ChatMemory> userConversationList = chatMemoryService.getUserConversationList(username);
+        List<ChatMemory> userConversationList = chatMemoryService.getUserConversationList(username, mode);
         if(userConversationList==null || userConversationList.isEmpty()){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户未创建会话");
         }
         return userConversationList;
+    }
+
+    /**
+     * 获取用户会话摘要列表
+     * @param username 用户名
+     * @return 会话摘要列表
+     */
+    @GetMapping("/getConversationSummaries")
+    public List<ConversationSummary> getConversationSummaries(String username, String mode){
+        if(username == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"请用户先登录");
+        }
+        return chatMemoryService.getUserConversationSummaries(username, mode);
     }
 
     /**
