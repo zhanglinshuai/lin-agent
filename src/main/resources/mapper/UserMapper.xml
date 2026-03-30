@@ -11,13 +11,20 @@
             <result property="verificationCode" column="verificationCode" />
             <result property="userPassword" column="userPassword" />
             <result property="userAvatar" column="userAvatar"/>
+            <result property="userRole" column="userRole"/>
             <result property="createTime" column="createTime" />
             <result property="isDelete" column="isDelete" />
             <result property="updateTime" column="updateTime" />
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,userName,userPhone,verificationCode,userPassword,userAvatar,createTime,
+        id,userName,userPhone,verificationCode,userPassword,userAvatar,userRole,createTime,
         isDelete,updateTime
     </sql>
+
+    <select id="countActiveUsers" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM user
+        WHERE isDelete = 0
+    </select>
 </mapper>

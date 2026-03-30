@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lin.linagent.mapper.ConversationInfoMapper">
+
+    <resultMap id="BaseResultMap" type="com.lin.linagent.domain.ConversationInfo">
+        <id property="id" column="id"/>
+        <result property="conversationId" column="conversation_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="title" column="title"/>
+        <result property="mode" column="mode"/>
+        <result property="tag" column="tag"/>
+        <result property="pinned" column="pinned"/>
+        <result property="summary" column="summary"/>
+        <result property="lastMessage" column="last_message"/>
+        <result property="messageCount" column="message_count"/>
+        <result property="createTime" column="create_time"/>
+        <result property="lastTime" column="last_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,conversation_id,user_id,title,mode,tag,pinned,summary,last_message,message_count,create_time,last_time,update_time
+    </sql>
+
+    <select id="countConversationTotal" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM conversation_info
+    </select>
+
+    <select id="selectUserConversationSummaries" resultType="com.lin.linagent.domain.dto.ConversationSummary">
+        SELECT conversation_id AS conversationId,
+               title,
+               tag,
+               mode,
+               pinned,
+               summary,
+               last_message AS lastMessage,
+               last_time AS lastTime,
+               create_time AS createTime,
+               message_count AS messageCount
+        FROM conversation_info
+        WHERE user_id = #{userId}
+        <if test="mode != null and mode != ''">
+            AND mode = #{mode}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                LOWER(IFNULL(title, '')) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                OR LOWER(IFNULL(summary, '')) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                OR LOWER(IFNULL(last_message, '')) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+            )
+        </if>
+        ORDER BY pinned DESC, last_time DESC, update_time DESC
+    </select>
+
+    <select id="selectAdminConversationList" resultType="com.lin.linagent.domain.dto.AdminConversationVO">
+        SELECT c.conversation_id AS conversationId,
+               c.user_id AS userId,
+               u.userName AS userName,
+               c.title,
+               c.mode,
+               c.tag,
+               c.pinned,
+               c.summary AS summary,
+               c.last_message AS lastMessage,
+               c.create_time AS createTime,
+               c.last_time AS lastTime,
+               c.message_count AS messageCount
+        FROM conversation_info c
+        LEFT JOIN user u ON u.id = c.user_id
+        WHERE 1 = 1
+        <if test="mode != null and mode != ''">
+            AND c.mode = #{mode}
+        </if>
+        <if test="pinned != null">
+            AND c.pinned = #{pinned}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                LOWER(IFNULL(c.title, '')) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                OR LOWER(IFNULL(u.userName, '')) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+            )
+        </if>
+        ORDER BY c.pinned DESC, c.last_time DESC, c.update_time DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

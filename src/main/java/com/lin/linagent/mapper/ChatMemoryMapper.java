@@ -11,6 +11,17 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 */
 public interface ChatMemoryMapper extends BaseMapper<ChatMemory> {
 
+    /**
+     * 统计会话数量
+     * @return 数量
+     */
+    Long countConversationTotal();
+
+    /**
+     * 统计消息数量
+     * @return 数量
+     */
+    Long countMessageTotal();
 }
 
 

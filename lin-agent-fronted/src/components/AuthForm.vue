@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { loginWithPassword, registerWithPassword, saveAuthSession, emitAuthEvent } from '@/services/auth'
+import { showGlobalToast } from '@/services/toast'
 
 const props = defineProps({
   initialMode: {
@@ -33,32 +34,35 @@ function switchMode(nextMode) {
   confirmPassword.value = ''
 }
 
+function showFormError(message) {
+  const text = String(message || '').trim()
+  errorMsg.value = text
+  if (text) {
+    showGlobalToast(text, { type: 'error' })
+  }
+  return false
+}
+
 function validate() {
   const userName = account.value.trim()
   if (!userName) {
-    errorMsg.value = '请输入用户名'
-    return false
+    return showFormError('请输入用户名')
   }
   if (userName.length > 10) {
-    errorMsg.value = '用户名不能超过10个字符'
-    return false
+    return showFormError('用户名不能超过10个字符')
   }
   if (!password.value) {
-    errorMsg.value = '请输入密码'
-    return false
+    return showFormError('请输入密码')
   }
   if (password.value.length < 6) {
-    errorMsg.value = '密码长度不能少于6位'
-    return false
+    return showFormError('密码长度不能少于6位')
   }
   if (isRegister.value) {
     if (!confirmPassword.value) {
-      errorMsg.value = '请再次输入密码'
-      return false
+      return showFormError('请再次输入密码')
     }
     if (password.value !== confirmPassword.value) {
-      errorMsg.value = '两次输入的密码不一致'
-      return false
+      return showFormError('两次输入的密码不一致')
     }
   }
   errorMsg.value = ''
@@ -82,19 +86,22 @@ async function handleSubmit() {
     saveAuthSession({
       token: session.token,
       userId: session.userId,
-      userName,
+      userName: session.userName || userName,
+      userRole: session.userRole,
     })
     emitAuthEvent('auth:login', {
       userId: session.userId,
-      userName,
+      userName: session.userName || userName,
+      userRole: session.userRole,
     })
     emit('success', {
       userId: session.userId,
-      userName,
+      userName: session.userName || userName,
+      userRole: session.userRole,
       registered: isRegister.value,
     })
   } catch (e) {
-    errorMsg.value = e?.response?.data?.message || e?.message || (isRegister.value ? '注册失败' : '登录失败')
+    showFormError(e?.response?.data?.message || e?.message || (isRegister.value ? '注册失败' : '登录失败'))
   } finally {
     loading.value = false
   }

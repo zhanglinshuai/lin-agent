@@ -11,10 +11,13 @@ import com.lin.linagent.advisor.MyLoggerAdvisor;
 import com.lin.linagent.chatMemory.CustomJdbcChatMemoryRepository;
 import com.lin.linagent.chatMemory.dialect.CustomMysqlJdbcChatMemoryRepositoryDialect;
 import com.lin.linagent.contant.CommonVariables;
+import com.lin.linagent.domain.dto.EmotionReportVO;
 import com.lin.linagent.multirecall.MultiRecall;
 import com.lin.linagent.multirecall.RecallResultMerger;
+import com.lin.linagent.service.ConversationInfoService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -40,6 +43,8 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
 import javax.sql.DataSource;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -56,6 +61,10 @@ public class EmotionApp {
     private final ChatClient chatClient;
 
     private final CustomJdbcChatMemoryRepository customChatMemoryRepository;
+
+    private final ChatMemory emotionChatMemory;
+
+    private final String emotionSystemPrompt;
 
     @Resource
     private ResourcePatternResolver resourcePatternResolver;
@@ -86,7 +95,7 @@ public class EmotionApp {
      *
      * @param dashscopeChatModel
      */
-    public EmotionApp(ChatModel dashscopeChatModel, MultiRecall multiRecall, RecallResultMerger recallResultMerger) {
+    public EmotionApp(ChatModel dashscopeChatModel, MultiRecall multiRecall, RecallResultMerger recallResultMerger, ConversationInfoService conversationInfoService) {
         this.resourcePatternResolver = new PathMatchingResourcePatternResolver();
         this.multiRecall = multiRecall;
         this.recallResultMerger = recallResultMerger;
@@ -100,12 +109,15 @@ public class EmotionApp {
         CustomJdbcChatMemoryRepository chatMemoryRepository = CustomJdbcChatMemoryRepository.builder()
                 .jdbcTemplate(new JdbcTemplate(dataSource))
                 .dialect(new CustomMysqlJdbcChatMemoryRepositoryDialect())
+                .conversationSyncHandler(conversationInfoService::syncConversation)
                 .build();
         this.customChatMemoryRepository = chatMemoryRepository;
+        this.emotionSystemPrompt = readEmotionSystemPrompt(resource);
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .chatMemoryRepository(chatMemoryRepository)
                 .maxMessages(10)
                 .build();
+        this.emotionChatMemory = chatMemory;
         chatClient = ChatClient.builder(dashscopeChatModel)
                 .defaultSystem(resource)
                 .defaultAdvisors(
@@ -120,6 +132,21 @@ public class EmotionApp {
 //                        new MyReTwoAdvisor()
                 )
                 .build();
+    }
+
+    /**
+     * 读取情感系统提示词文本
+     * @param resource 提示词资源
+     * @return 提示词文本
+     */
+    private String readEmotionSystemPrompt(org.springframework.core.io.Resource resource) {
+        try {
+            String prompt = resource.getContentAsString(StandardCharsets.UTF_8);
+            return StringUtils.defaultIfBlank(prompt, CommonVariables.SYSTEM_PROMPT);
+        } catch (Exception e) {
+            log.warn("读取情感系统提示词失败，回退默认提示词: {}", e.getMessage());
+            return CommonVariables.SYSTEM_PROMPT;
+        }
     }
 
     /**
@@ -140,9 +167,6 @@ public class EmotionApp {
         return answer;
     }
 
-    record EmotionReport(String title, List<String> suggestions) {
-    }
-
     /**
      * 指定ai生成情感报告(结构化输出)
      *
@@ -150,14 +174,30 @@ public class EmotionApp {
      * @param chatId
      * @return
      */
-    public EmotionReport getEmotionReport(String message, String chatId) {
-        EmotionReport emotionReport = chatClient
+    public EmotionReportVO getEmotionReport(String message, String chatId) {
+        // 情感报告是一次性结构化生成，不应写入会话记忆，避免污染对话区
+        EmotionReportVO emotionReport = ChatClient.builder(dashscopeChatModel)
+                .build()
                 .prompt()
-                .system(CommonVariables.SYSTEM_PROMPT + "每次对话后生成情感报告，标题为{问题}的情感报告，内容为建议列表")
+                .system("""
+                        %s
+                        
+                        请基于当前用户的表达生成一份结构化情感报告。
+                        要求：
+                        1. title：写成自然、具体的报告标题。
+                        2. snapshot：用 2-3 句话概括用户当前的情绪状态和核心处境。
+                        3. keyPoints：提炼 3 条以内最值得关注的问题点。
+                        4. suggestions：给出 3-5 条温和、具体、可执行的建议。
+                        5. actions：给出 2-4 条用户接下来就能做的行动。
+                        6. closingMessage：用一小段收尾鼓励语结束。
+                        7. 只输出结构化结果，不要额外解释字段。
+                        """.formatted(CommonVariables.SYSTEM_PROMPT))
                 .user(message)
-                .advisors(sepc -> sepc.param(ChatMemory.CONVERSATION_ID, chatId))
                 .call()
-                .entity(EmotionReport.class);
+                .entity(EmotionReportVO.class);
+        if (emotionReport != null) {
+            emotionReport.setGeneratedAt(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+        }
         return emotionReport;
     }
 
@@ -321,13 +361,7 @@ public class EmotionApp {
      * @return 流式结果
      */
     public Flux<String> doChatByStream(String message, String chatId, String userId, String tag) {
-        UserMessage userMessage = new UserMessage(message);
-        Map<String, Object> metadata = userMessage.getMetadata();
-        metadata.put("userId", userId);
-        metadata.put("mode", "emotion");
-        metadata.put("tag", tag);
-        String title = getOrCreateTitle(chatId, message);
-        metadata.put("title", title);
+        UserMessage userMessage = buildEmotionUserMessage(message, chatId, userId, tag);
         return chatClient
                 .prompt()
                 .messages(userMessage)
@@ -337,6 +371,78 @@ public class EmotionApp {
                 .stream()
                 .content();
 
+    }
+
+    /**
+     * 带知识库上下文的情感流式回答
+     * @param message 用户消息
+     * @param chatId 会话id
+     * @param userId 用户id
+     * @param tag 对话标签
+     * @param knowledgePromptContext 知识库上下文
+     * @return 流式结果
+     */
+    public Flux<String> doChatByStreamWithKnowledgeSupport(String message, String chatId, String userId, String tag, String knowledgePromptContext) {
+        UserMessage userMessage = buildEmotionUserMessage(message, chatId, userId, tag);
+        return buildKnowledgeGroundedChatClient()
+                .prompt()
+                .system(buildKnowledgeGroundedEmotionPrompt(knowledgePromptContext))
+                .messages(userMessage)
+                .advisors(advisorSpec ->
+                        advisorSpec.param(ChatMemory.CONVERSATION_ID, chatId)
+                )
+                .stream()
+                .content();
+    }
+
+    /**
+     * 构建情感消息对象
+     * @param message 用户消息
+     * @param chatId 会话id
+     * @param userId 用户id
+     * @param tag 对话标签
+     * @return 用户消息
+     */
+    private UserMessage buildEmotionUserMessage(String message, String chatId, String userId, String tag) {
+        UserMessage userMessage = new UserMessage(message);
+        Map<String, Object> metadata = userMessage.getMetadata();
+        metadata.put("userId", userId);
+        metadata.put("mode", "emotion");
+        metadata.put("tag", tag);
+        String title = getOrCreateTitle(chatId, message);
+        metadata.put("title", title);
+        return userMessage;
+    }
+
+    /**
+     * 构建带知识库上下文的情感对话客户端
+     * @return ChatClient
+     */
+    private ChatClient buildKnowledgeGroundedChatClient() {
+        return ChatClient.builder(dashscopeChatModel)
+                .defaultAdvisors(
+                        MessageChatMemoryAdvisor.builder(emotionChatMemory).build(),
+                        new MyLoggerAdvisor()
+                )
+                .build();
+    }
+
+    /**
+     * 构建带知识库上下文的情感提示词
+     * @param knowledgePromptContext 知识库上下文
+     * @return 提示词
+     */
+    private String buildKnowledgeGroundedEmotionPrompt(String knowledgePromptContext) {
+        if (StringUtils.isBlank(knowledgePromptContext)) {
+            return emotionSystemPrompt;
+        }
+        return emotionSystemPrompt + "\n\n" + knowledgePromptContext + """
+                
+                补充要求：
+                1. 优先参考上面的知识库资料，结合用户当前的真实处境给出温和、具体、可执行的回应。
+                2. 如果知识库资料不足以直接覆盖用户的问题，要明确说明不足，并继续基于情感支持能力给出稳妥建议。
+                3. 不要生硬复述资料标题或片段，要把资料内容自然融入回复。
+                """;
     }
 
     private Optional<String> findExistingTitle(String conversationId) {

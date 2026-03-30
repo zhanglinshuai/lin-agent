@@ -17,6 +17,15 @@ import lombok.Data;
 @Data
 public class User {
     /**
+     * 普通用户
+     */
+    public static final int USER_ROLE_USER = 0;
+
+    /**
+     * 管理员
+     */
+    public static final int USER_ROLE_ADMIN = 1;
+    /**
      * 
      */
     @TableId
@@ -52,6 +61,12 @@ public class User {
     private String userPassword;
 
     /**
+     * 用户角色：0-普通用户，1-管理员
+     */
+    @TableField("userRole")
+    private Integer userRole;
+
+    /**
      * 创建时间
      */
     @TableField("createTime")
@@ -79,6 +94,7 @@ public class User {
                 ", verificationCode='" + verificationCode + '\'' +
                 ", userAvatar='" + userAvatar + '\'' +
                 ", userPassword='" + userPassword + '\'' +
+                ", userRole=" + userRole +
                 ", createTime=" + createTime +
                 ", isDelete=" + isDelete +
                 ", updateTime=" + updateTime +
@@ -89,11 +105,11 @@ public class User {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         User user = (User) o;
-        return Objects.equals(getId(), user.getId()) && Objects.equals(getUserName(), user.getUserName()) && Objects.equals(getUserPhone(), user.getUserPhone()) && Objects.equals(getVerificationCode(), user.getVerificationCode()) && Objects.equals(getUserAvatar(), user.getUserAvatar()) && Objects.equals(getUserPassword(), user.getUserPassword()) && Objects.equals(getCreateTime(), user.getCreateTime()) && Objects.equals(getIsDelete(), user.getIsDelete()) && Objects.equals(getUpdateTime(), user.getUpdateTime());
+        return Objects.equals(getId(), user.getId()) && Objects.equals(getUserName(), user.getUserName()) && Objects.equals(getUserPhone(), user.getUserPhone()) && Objects.equals(getVerificationCode(), user.getVerificationCode()) && Objects.equals(getUserAvatar(), user.getUserAvatar()) && Objects.equals(getUserPassword(), user.getUserPassword()) && Objects.equals(getUserRole(), user.getUserRole()) && Objects.equals(getCreateTime(), user.getCreateTime()) && Objects.equals(getIsDelete(), user.getIsDelete()) && Objects.equals(getUpdateTime(), user.getUpdateTime());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getId(), getUserName(), getUserPhone(), getVerificationCode(), getUserAvatar(), getUserPassword(), getCreateTime(), getIsDelete(), getUpdateTime());
+        return Objects.hash(getId(), getUserName(), getUserPhone(), getVerificationCode(), getUserAvatar(), getUserPassword(), getUserRole(), getCreateTime(), getIsDelete(), getUpdateTime());
     }
 }

@@ -13,6 +13,11 @@ import org.apache.ibatis.annotations.Mapper;
 @Mapper
 public interface UserMapper extends BaseMapper<User> {
 
+    /**
+     * 统计正常用户数量
+     * @return 数量
+     */
+    Long countActiveUsers();
 }
 
 

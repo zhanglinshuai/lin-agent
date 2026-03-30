@@ -22,7 +22,7 @@ public class ImageSearchTool {
 
     private  static final String API_URL = "https://api.pexels.com/v1/search";
 
-    @Tool(description = "search image from web")
+    @Tool(description = "根据场景或关键词搜索网络图片，适合约会场景配图、灵感参考图、插图素材等需求")
     public String searchImage(@ToolParam(description = "search query keyword")String query){
         try{
             return String.join(",",searchMediumImages(query));

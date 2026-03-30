@@ -7,9 +7,18 @@ import org.springframework.data.elasticsearch.annotations.Document;
 public class KnowledgeDoc {
     @Id
     private String id;
+    private String fileName;
     private String title;
     private String content;
     private String emotion;
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
 
     public String getEmotion() {
         return emotion;

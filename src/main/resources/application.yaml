@@ -54,8 +54,12 @@ spring:
           servers-configuration: classpath:/mcp-servers.json
 lin:
   search:
-    # 搜索提供方按顺序尝试，推荐优先 tavily，其次 duckduckgo，最后 metaso 兜底
-    provider-order: ${LIN_SEARCH_PROVIDER_ORDER:tavily,duckduckgo,metaso}
+    # 搜索提供方按顺序尝试，默认优先 tavily，其次 metaso 兜底
+    provider-order: ${LIN_SEARCH_PROVIDER_ORDER:tavily,metaso}
+    # 原始搜索词全部 provider 未命中后，再做几轮搜索词改写遍历
+    query-rewrite-rounds: ${LIN_SEARCH_QUERY_REWRITE_ROUNDS:2}
+    # 每轮最多生成多少条新的搜索词候选
+    query-rewrite-candidates-per-round: ${LIN_SEARCH_QUERY_REWRITE_CANDIDATES_PER_ROUND:2}
     # 建议在环境变量中配置 Tavily Key，以获得更好的检索质量
     tavily-api-key: ${TAVILY_API_KEY:}
     # 如未配置则会回退到代码中的默认 metaso key

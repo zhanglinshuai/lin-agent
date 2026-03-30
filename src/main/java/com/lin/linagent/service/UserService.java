@@ -2,9 +2,8 @@ package com.lin.linagent.service;
 
 import com.lin.linagent.domain.User;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.lin.linagent.domain.dto.UserProfileUpdateRequest;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 /**
 * @author zhanglinshuai
@@ -43,7 +42,7 @@ public interface UserService extends IService<User> {
      * @param newUser
      * @return
      */
-    User updateUserInfo(User newUser);
+    User updateUserInfo(UserProfileUpdateRequest request);
 
 
     /**

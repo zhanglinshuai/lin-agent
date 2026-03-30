@@ -17,4 +17,14 @@
     <sql id="Base_Column_List">
         id,conversation_id,content,message_type,create_time,user_id,metadata
     </sql>
+
+    <select id="countConversationTotal" resultType="java.lang.Long">
+        SELECT COUNT(DISTINCT conversation_id)
+        FROM chat_memory
+    </select>
+
+    <select id="countMessageTotal" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM chat_memory
+    </select>
 </mapper>

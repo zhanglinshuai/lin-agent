@@ -35,18 +35,30 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public final class CustomJdbcChatMemoryRepository implements ChatMemoryRepository {
 
+    /**
+     * 会话同步回调
+     */
+    @FunctionalInterface
+    public interface ConversationSyncHandler {
+        void sync(String conversationId, String userId);
+    }
+
     private final JdbcTemplate jdbcTemplate;
 
     private final TransactionTemplate transactionTemplate;
 
     private final CustomJdbcChatMemoryRepositoryDialect dialect;
 
+    private final ConversationSyncHandler conversationSyncHandler;
+
     private CustomJdbcChatMemoryRepository(JdbcTemplate jdbcTemplate, CustomJdbcChatMemoryRepositoryDialect dialect,
-                                           PlatformTransactionManager txManager) {
+                                           PlatformTransactionManager txManager,
+                                           ConversationSyncHandler conversationSyncHandler) {
         Assert.notNull(jdbcTemplate, "jdbcTemplate cannot be null");
         Assert.notNull(dialect, "dialect cannot be null");
         this.jdbcTemplate = jdbcTemplate;
         this.dialect = dialect;
+        this.conversationSyncHandler = conversationSyncHandler;
         this.transactionTemplate = new TransactionTemplate(
                 txManager != null ? txManager : new DataSourceTransactionManager(jdbcTemplate.getDataSource()));
     }
@@ -79,6 +91,9 @@ public final class CustomJdbcChatMemoryRepository implements ChatMemoryRepositor
                     new AddBatchPreparedStatement(conversationId, messages,userId));
             return null;
         });
+        if (this.conversationSyncHandler != null) {
+            this.conversationSyncHandler.sync(conversationId, userId);
+        }
     }
 
     @Override
@@ -174,6 +189,8 @@ public final class CustomJdbcChatMemoryRepository implements ChatMemoryRepositor
 
         private PlatformTransactionManager platformTransactionManager;
 
+        private ConversationSyncHandler conversationSyncHandler;
+
         private static final Logger logger = LoggerFactory.getLogger(CustomJdbcChatMemoryRepository.Builder.class);
 
         private Builder() {
@@ -199,11 +216,16 @@ public final class CustomJdbcChatMemoryRepository implements ChatMemoryRepositor
             return this;
         }
 
+        public Builder conversationSyncHandler(ConversationSyncHandler conversationSyncHandler) {
+            this.conversationSyncHandler = conversationSyncHandler;
+            return this;
+        }
+
         public CustomJdbcChatMemoryRepository build() {
             DataSource effectiveDataSource = resolveDataSource();
             CustomJdbcChatMemoryRepositoryDialect effectiveDialect = resolveDialect(effectiveDataSource);
             return new CustomJdbcChatMemoryRepository(resolveJdbcTemplate(), effectiveDialect,
-                    this.platformTransactionManager);
+                    this.platformTransactionManager, this.conversationSyncHandler);
         }
 
         private JdbcTemplate resolveJdbcTemplate() {

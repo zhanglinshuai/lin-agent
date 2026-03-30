@@ -34,6 +34,29 @@
   --color-text: var(--vt-c-text-light-1);
 
   --section-gap: 160px;
+  --font-sans:
+    'Avenir Next',
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Microsoft YaHei UI',
+    'Microsoft YaHei',
+    'Noto Sans SC',
+    'Segoe UI',
+    sans-serif;
+  --font-display:
+    'Avenir Next',
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Microsoft YaHei UI',
+    'Noto Sans SC',
+    sans-serif;
+  --font-code:
+    'JetBrains Mono',
+    'Cascadia Code',
+    'SFMono-Regular',
+    Consolas,
+    'Liberation Mono',
+    monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -66,21 +89,24 @@ body {
     color 0.5s,
     background-color 0.5s;
   line-height: 1.6;
-  font-family:
-    Inter,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    Oxygen,
-    Ubuntu,
-    Cantarell,
-    'Fira Sans',
-    'Droid Sans',
-    'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-sans);
   font-size: 15px;
+  letter-spacing: 0.01em;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-code);
 }

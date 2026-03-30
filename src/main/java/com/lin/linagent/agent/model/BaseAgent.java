@@ -185,7 +185,8 @@ public abstract class BaseAgent {
      * @param content 事件内容
      */
     protected void emitProgress(String type, String content) {
-        if (this.progressConsumer == null || StringUtils.isBlank(content)) {
+        // 流式 Markdown 分片可能只包含空格或换行，这些字符也需要保留给前端还原格式。
+        if (this.progressConsumer == null || content == null || content.isEmpty()) {
             return;
         }
         AgentProgressEvent agentProgressEvent = new AgentProgressEvent();

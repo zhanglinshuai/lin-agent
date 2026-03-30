@@ -31,6 +31,11 @@ public class ConversationSummary {
     private String mode;
 
     /**
+     * 是否置顶
+     */
+    private Boolean pinned;
+
+    /**
      * 会话摘要
      */
     private String summary;
@@ -44,6 +49,11 @@ public class ConversationSummary {
      * 最新时间
      */
     private Date lastTime;
+
+    /**
+     * 会话创建时间
+     */
+    private Date createTime;
 
     /**
      * 消息数量

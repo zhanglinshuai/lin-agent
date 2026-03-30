@@ -6,6 +6,7 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -38,10 +39,15 @@ public class pgVectorRecallStrategy implements RecallStrategy {
         return CompletableFuture.supplyAsync(()->{
             List<Document> documents = pgVectorVectorStore.similaritySearch(searchRequest);
             return documents.stream()
-                    .map(d->new Document(d.getId(),d.getText(), Map.of(
-                            "source","vector",
-                            "score",d.getScore()
-                    )))
+                    .map(d -> {
+                        Map<String, Object> metadata = new LinkedHashMap<>();
+                        if (d.getMetadata() != null && !d.getMetadata().isEmpty()) {
+                            metadata.putAll(d.getMetadata());
+                        }
+                        metadata.put("source", "vector");
+                        metadata.put("score", d.getScore());
+                        return new Document(d.getId(), d.getText(), metadata);
+                    })
                     .toList();
         });
     }

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lin.linagent.mapper.KnowledgeDocumentMetaMapper">
+
+    <resultMap id="BaseResultMap" type="com.lin.linagent.domain.KnowledgeDocumentMeta">
+        <id property="fileName" column="file_name"/>
+        <result property="title" column="title"/>
+        <result property="fileSize" column="file_size"/>
+        <result property="sectionCount" column="section_count"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="syncedAt" column="synced_at"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        file_name,title,file_size,section_count,update_time,synced_at
+    </sql>
+
+    <select id="sumSectionCount" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(section_count), 0)
+        FROM knowledge_document_meta
+    </select>
+</mapper>

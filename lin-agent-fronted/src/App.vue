@@ -1,9 +1,11 @@
 <script setup>
+import GlobalToast from '@/components/GlobalToast.vue'
 </script>
 
 <template>
   <div class="app">
     <router-view />
+    <GlobalToast />
   </div>
 </template>
 

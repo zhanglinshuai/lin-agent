@@ -17,12 +17,25 @@ public class ElasticSearchInitializer {
 
     private final ElasticsearchClient elasticsearchClient;
 
+    private volatile boolean knowledgeDocIndexReady = false;
+
     public ElasticSearchInitializer(ElasticsearchClient elasticsearchClient) {
         this.elasticsearchClient = elasticsearchClient;
     }
 
     @PostConstruct
     public void init() throws IOException {
+        ensureKnowledgeDocIndex();
+    }
+
+    /**
+     * 确保知识库索引存在
+     * @throws IOException 异常
+     */
+    public void ensureKnowledgeDocIndex() throws IOException {
+        if (knowledgeDocIndexReady) {
+            return;
+        }
         if (!elasticsearchClient.indices().exists(e -> e.index("knowledge_docs")).value()) {
             elasticsearchClient.indices().create(CreateIndexRequest.of(c -> c
                     .index("knowledge_docs")
@@ -33,5 +46,6 @@ public class ElasticSearchInitializer {
                     )
             ));
         }
+        knowledgeDocIndexReady = true;
     }
 }

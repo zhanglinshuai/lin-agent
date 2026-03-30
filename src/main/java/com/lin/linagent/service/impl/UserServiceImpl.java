@@ -5,19 +5,20 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lin.linagent.contant.CommonVariables;
 import com.lin.linagent.domain.User;
+import com.lin.linagent.domain.dto.UserProfileUpdateRequest;
 import com.lin.linagent.exception.BusinessException;
 import com.lin.linagent.exception.ErrorCode;
 import com.lin.linagent.service.UserService;
 import com.lin.linagent.mapper.UserMapper;
 import jakarta.annotation.Resource;
+import org.springframework.util.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
+import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -64,6 +65,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         user.setId(UUID.randomUUID().toString());
         user.setUserName(username);
         user.setUserPassword(encryptedPassword);
+        user.setUserRole(User.USER_ROLE_USER);
         int insert = userMapper.insert(user);
         if(insert!=1){
             throw new BusinessException(ErrorCode.SYSTEM_ERROR,"插入数据失败");
@@ -90,6 +92,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if(user==null){
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR,"用户不存在，请先去注册");
         }
+        if (Integer.valueOf(1).equals(user.getIsDelete())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN_ERROR,"账号已被禁用，请联系管理员");
+        }
 
         return user.getId();
     }
@@ -110,26 +115,50 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public User updateUserInfo(User newUser) {
-        if(newUser==null){
+    public User updateUserInfo(UserProfileUpdateRequest request) {
+        if(request==null){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"新用户信息为空");
         }
-        String userId = newUser.getId();
+        String userId = StringUtils.trimToEmpty(request.getId());
+        if (StringUtils.isBlank(userId)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户不存在");
+        }
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("id",userId);
         User user = userMapper.selectOne(queryWrapper);
         if(user==null){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户不存在");
         }
-        //判断前后用户信息是否相同，如果相同就不用更新直接返回就可以
-        if(newUser.equals(user)){
-            return user;
+
+        String nextUserName = StringUtils.trimToNull(request.getUserName());
+        if (nextUserName != null) {
+            if (nextUserName.length() > 10) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户名过长");
+            }
+            if (!StringUtils.equals(nextUserName, user.getUserName())) {
+                QueryWrapper<User> duplicateQuery = new QueryWrapper<>();
+                duplicateQuery.eq("userName", nextUserName);
+                duplicateQuery.ne("id", userId);
+                Long count = userMapper.selectCount(duplicateQuery);
+                if (count != null && count > 0) {
+                    throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户名已存在");
+                }
+            }
+            user.setUserName(nextUserName);
         }
-        int update = userMapper.updateById(newUser);
+
+        String nextUserPhone = StringUtils.trimToNull(request.getUserPhone());
+        if (nextUserPhone != null && nextUserPhone.length() > 20) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"手机号过长");
+        }
+        user.setUserPhone(nextUserPhone);
+        user.setUpdateTime(new Date());
+
+        int update = userMapper.updateById(user);
         if (update != 1) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"更新失败");
         }
-        return newUser;
+        return user;
     }
 
     @Override

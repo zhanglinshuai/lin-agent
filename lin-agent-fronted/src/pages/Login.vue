@@ -28,10 +28,10 @@ function goHome() {
 
     <main class="login-shell">
       <section class="intro-panel">
-        <div class="intro-badge">Lin Agent Platform</div>
+        <div class="intro-badge">灵伴 AI</div>
         <h1 class="intro-title">登录后，在统一入口里完成情绪陪伴、任务协作与资料整理</h1>
         <p class="intro-desc">
-          统一账号进入系统后，你可以直接使用智能协同助理，保存历史对话，并在同一个页面里完成情绪梳理、计划安排和任务执行。
+          统一账号进入系统后，你可以直接使用灵伴，保存历史对话，并在同一个页面里完成情绪梳理、计划安排和任务执行。
         </p>
         <div class="intro-highlights">
           <div class="highlight-card">
@@ -57,7 +57,7 @@ function goHome() {
           <div class="auth-card-glow"></div>
           <div class="auth-header">
             <div class="auth-kicker">账号中心</div>
-            <h2 class="auth-title">欢迎进入 Lin Agent</h2>
+            <h2 class="auth-title">欢迎进入灵伴</h2>
             <p class="auth-subtitle">支持登录与注册，适配桌面浏览器、平板和移动端视口。</p>
           </div>
           <AuthForm initial-mode="login" @success="handleAuthSuccess" />

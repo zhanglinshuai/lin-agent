@@ -74,7 +74,7 @@ public class WebSearchPropertyBridgeConfig implements BeanFactoryPostProcessor, 
                 "web-search.duckduckgo.enabled",
                 "webSearch.duckduckgo.enabled");
 
-        registerAliases(properties, "metaso,tavily",
+        registerAliases(properties, "tavily,metaso",
                 "search.web.providers",
                 "search.web.provider-order",
                 "web-search.providers",
